@@ -263,7 +263,7 @@ class UNIT(object):
 
         """ Training """
         t_vars = tf.trainable_variables()
-        G_vars = [var for var in t_vars if 'generator' in var.name]
+        G_vars = [var for var in t_vars if ('generator' in var.name) or ('encoder' in var.name)]
         D_vars = [var for var in t_vars if 'discriminator' in var.name]
 
 
