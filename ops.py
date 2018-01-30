@@ -32,7 +32,7 @@ def deconv(x, channels, kernel=3, stride=2, activation_fn='leaky', scope='deconv
 
         return x
 
-def resblock(x_init, channels, kernel=3, stride=1, pad=1, is_training=True, norm_fn='instance', scope='resblock_0') :
+def resblock(x_init, channels, kernel=3, stride=1, pad=1, dropout_ratio=0.0, is_training=True, norm_fn='instance', scope='resblock_0') :
     assert norm_fn in ['instance', 'batch', 'weight', 'spectral', None]
     with tf.variable_scope(scope) :
         with tf.variable_scope('res1') :
@@ -50,6 +50,9 @@ def resblock(x_init, channels, kernel=3, stride=1, pad=1, is_training=True, norm
                 x = instance_norm(x, 'res2_instance')
             if norm_fn == 'batch' :
                 x = batch_norm(x, is_training, 'res2_batch')
+
+        if dropout_ratio > 0.0 :
+            x = tf.layers.dropout(x, rate=dropout_ratio, training=is_training)
 
         return x + x_init
 

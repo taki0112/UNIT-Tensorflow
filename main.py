@@ -29,6 +29,7 @@ def parse_args():
     parser.add_argument('--n_gen_decoder', type=int, default=3, help='The number of generator_decoder')
     parser.add_argument('--n_dis', type=int, default=6, help='The number of discriminator layer')
 
+    parser.add_argument('--res_dropout', type=float, default=0.0, help='The dropout ration of Resblock')
     parser.add_argument('--smoothing', type=bool, default=False, help='smoothing loss use or not')
     parser.add_argument('--lsgan', type=bool, default=False, help='lsgan loss use or not')
     parser.add_argument('--norm', type=str, default='instance', help='The norm type')

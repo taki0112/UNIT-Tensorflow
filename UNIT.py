@@ -43,6 +43,7 @@ class UNIT(object):
         """ Discriminator """
         self.n_dis = args.n_dis # + 2
 
+        self.res_dropout = args.res_dropout
         self.smoothing = args.smoothing
         self.lsgan = args.lsgan
         self.norm = args.norm
@@ -68,7 +69,8 @@ class UNIT(object):
 
             # channel = 256
             for i in range(0, self.n_enc_resblock) :
-                x = resblock(x, channel, kernel=3, stride=1, pad=1, is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+                x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
+                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
             return x
     # END of ENCODERS
@@ -81,7 +83,8 @@ class UNIT(object):
         channel = self.ch * pow(2, self.n_encoder-1)
         with tf.variable_scope(scope, reuse) :
             for i in range(0, self.n_enc_share) :
-                x = resblock(x, channel, kernel=3, stride=1, pad=1, is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+                x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
+                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
             x = gaussian_noise_layer(x)
 
@@ -91,7 +94,8 @@ class UNIT(object):
         channel = self.ch * pow(2, self.n_encoder-1)
         with tf.variable_scope(scope, reuse) :
             for i in range(0, self.n_gen_share) :
-                x = resblock(x, channel, kernel=3, stride=1, pad=1, is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+                x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
+                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
         return x
     # END of SHARED LAYERS
@@ -103,7 +107,8 @@ class UNIT(object):
         channel = self.ch * pow(2, self.n_encoder - 1)
         with tf.variable_scope(scope, reuse) :
             for i in range(0, self.n_gen_resblock) :
-                x = resblock(x, channel, kernel=3, stride=1, pad=1, is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+                x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
+                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
             for i in range(0, self.n_gen_decoder-1) :
                 x = deconv(x, channel//2, kernel=3, stride=2, activation_fn='leaky', scope='deconv_'+str(i))
