@@ -33,7 +33,7 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 ![fail](./assests/fail.png)
 
 ## Reference
-* [author-pytorch_code](https://github.com/mingyuliutw/UNIT)
+* [Pytorch_code](https://github.com/mingyuliutw/UNIT)
 
 ## Author
 Junho Kim
