@@ -11,7 +11,7 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 ![architecture](./assests/architecture.png)
 
 ## Framework
-![framwork](./assests/framework.png)
+![framwork](./assests/framwork.png)
 
 ## Model
 ![compare](./assests/compare.png)
