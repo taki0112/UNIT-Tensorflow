@@ -8,13 +8,10 @@ Simple Tensorflow implementation of [Unsupervsied Image to Image Translation](ht
 ![framwork](./assests/framework.png)
 
 ## Model
-### Comparison with CycleGAN, DiscoGAN
 ![compare](./assests/compare.png)
 
-### VAE
 ![vae](./assests/vae_model.png)
 
-### GAN
 ![gan](./assests/gan_model.png)
 
 ## Training Objective
