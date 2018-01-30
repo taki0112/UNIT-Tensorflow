@@ -145,7 +145,7 @@ def generator_loss(fake, smoothing=False, use_lsgan=False) :
         if smoothing :
             loss = tf.reduce_mean(tf.squared_difference(fake, 0.9))
         else :
-            loss = tf.reduce_mean(tf.squared_difference(fake, 0.9))
+            loss = tf.reduce_mean(tf.squared_difference(fake, 1.0))
     else :
         if smoothing :
             fake_labels = tf.fill(tf.shape(fake), 0.9)
