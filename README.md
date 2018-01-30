@@ -3,7 +3,7 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 
 ## Usage
 ```bash
-> python main.py --phase train --dataset cat 
+> python main.py --phase train --dataset cat2tiger
 ```
 * See `main.py` for other arguments
 
