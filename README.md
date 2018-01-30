@@ -14,6 +14,8 @@ Simple Tensorflow implementation of [Unsupervsied Image to Image Translation](ht
 
 ![gan](./assests/gan_model.png)
 
+![cycle](./assests/cycle.png)
+
 ## Training Objective
 ![objective](./assests/training_objective.png)
 
