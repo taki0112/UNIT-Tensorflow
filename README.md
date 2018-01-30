@@ -23,7 +23,7 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 ![cycle](./assests/cycle.png)
 
 ## Training Objective
-![objective](./assests/training_objective.png)
+![objective](./assests/training_objective_.png)
 
 ## Result
 ### Success
