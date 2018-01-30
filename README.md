@@ -34,7 +34,6 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 
 ## Reference
 * [author-pytorch_code](https://github.com/mingyuliutw/UNIT)
-* [slide](https://www.slideshare.net/MehdiELFASSYFIHRY/about-unsupervised-imagetoimage-translation)
 
 ## Author
 Junho Kim
