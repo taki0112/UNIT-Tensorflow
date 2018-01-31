@@ -14,11 +14,11 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
            ├── www.png
            └── ...
        ├── testA
-           ├── aaa.jpg (name, format doesn't matter)
+           ├── aaa.jpg 
            ├── bbb.png
            └── ...
        └── testB
-           ├── ccc.jpg (name, format doesn't matter)
+           ├── ccc.jpg 
            ├── ddd.png
            └── ...
 ```
