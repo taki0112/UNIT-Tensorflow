@@ -3,6 +3,27 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 
 ## Usage
 ```bash
+├── dataset
+   └── YOUR_DATASET_NAME
+       ├── trainA
+           ├── xxx.jpg (name, format doesn't matter)
+           ├── yyy.png
+           └── ...
+       ├── trainB
+           ├── zzz.jpg
+           ├── www.png
+           └── ...
+       ├── testA
+           ├── aaa.jpg (name, format doesn't matter)
+           ├── bbb.png
+           └── ...
+       └── testB
+           ├── ccc.jpg (name, format doesn't matter)
+           ├── ddd.png
+           └── ...
+```
+
+```bash
 > python main.py --phase train --dataset cat2tiger
 ```
 * See `main.py` for other arguments
