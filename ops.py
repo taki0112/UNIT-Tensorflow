@@ -32,10 +32,10 @@ def deconv(x, channels, kernel=3, stride=2, activation_fn='leaky', scope='deconv
 
         return x
 
-def resblock(x_init, channels, kernel=3, stride=1, pad=1, dropout_ratio=0.0, is_training=True, norm_fn='instance', scope='resblock_0') :
+def resblock(x_init, channels, kernel=3, stride=1, pad=1, dropout_ratio=0.0, is_training=True, reuse=False, norm_fn='instance', scope='resblock_0') :
     assert norm_fn in ['instance', 'batch', 'weight', 'spectral', None]
-    with tf.variable_scope(scope) :
-        with tf.variable_scope('res1') :
+    with tf.variable_scope(scope, reuse) :
+        with tf.variable_scope('res1', reuse) :
             x = tf.pad(x_init, [[0, 0], [pad, pad], [pad, pad], [0, 0]])
             x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=he_init(), strides=stride)
             if norm_fn == 'instance' :
@@ -43,7 +43,7 @@ def resblock(x_init, channels, kernel=3, stride=1, pad=1, dropout_ratio=0.0, is_
             if norm_fn == 'batch' :
                 x = batch_norm(x, is_training, 'res1_batch')
             x = relu(x)
-        with tf.variable_scope('res2') :
+        with tf.variable_scope('res2', reuse) :
             x = tf.pad(x, [[0, 0], [pad, pad], [pad, pad], [0, 0]])
             x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, strides=stride)
             if norm_fn == 'instance' :
@@ -103,12 +103,15 @@ def instance_norm(x, scope='instance') :
                                            center=True, scale=True,
                                            scope=scope)
 
-def gaussian_noise_layer(input_layer):
-    noise = tf.random_normal(shape=tf.shape(input_layer), mean=0.0, stddev=1.0, dtype=tf.float32)
-    return input_layer + noise
+def gaussian_noise_layer(mu):
+    sigma = 1.0
+    gaussian_random_vector = tf.random_normal(shape=tf.shape(mu), mean=0.0, stddev=1.0, dtype=tf.float32)
+    return mu + sigma * gaussian_random_vector
 
 def KL_divergence(mu) :
-    mu_2 = tf.pow(mu, 2)
+    # KL_divergence = 0.5 * tf.reduce_sum(tf.square(mu) + tf.square(sigma) - tf.log(1e-8 + tf.square(sigma)) - 1, axis = -1)
+    # loss = tf.reduce_mean(KL_divergence)
+    mu_2 = tf.square(mu)
     loss = tf.reduce_mean(mu_2)
 
     return loss

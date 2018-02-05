@@ -70,7 +70,7 @@ class UNIT(object):
             # channel = 256
             for i in range(0, self.n_enc_resblock) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+                             is_training=is_training, reuse=reuse, norm_fn=self.norm, scope='resblock_'+str(i))
 
             return x
     # END of ENCODERS
@@ -84,7 +84,7 @@ class UNIT(object):
         with tf.variable_scope(scope, reuse) :
             for i in range(0, self.n_enc_share) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+                             is_training=is_training, reuse=reuse, norm_fn=self.norm, scope='resblock_'+str(i))
 
             x = gaussian_noise_layer(x)
 
@@ -95,7 +95,7 @@ class UNIT(object):
         with tf.variable_scope(scope, reuse) :
             for i in range(0, self.n_gen_share) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+                             is_training=is_training, reuse=reuse, norm_fn=self.norm, scope='resblock_'+str(i))
 
         return x
     # END of SHARED LAYERS
@@ -108,7 +108,7 @@ class UNIT(object):
         with tf.variable_scope(scope, reuse) :
             for i in range(0, self.n_gen_resblock) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+                             is_training=is_training, reuse=reuse, norm_fn=self.norm, scope='resblock_'+str(i))
 
             for i in range(0, self.n_gen_decoder-1) :
                 x = deconv(x, channel//2, kernel=3, stride=2, activation_fn='leaky', scope='deconv_'+str(i))
@@ -206,9 +206,6 @@ class UNIT(object):
             lambda : domain_B
         )
 
-        """ Generated Image """
-        self.fake_B, _ = self.generate_a2b(domain_A) # for test
-        self.fake_A, _ = self.generate_b2a(domain_B) # for test
 
         """ Define Encoder, Generator, Discriminator """
         x_aa, x_ba, x_ab, x_bb, shared = self.translation(domain_A, domain_B)
@@ -279,6 +276,10 @@ class UNIT(object):
 
         self.G_loss = tf.summary.merge([self.G_A_loss, self.G_B_loss])
         self.D_loss = tf.summary.merge([self.D_A_loss, self.D_B_loss])
+
+        """ Generated Image """
+        self.fake_B, _ = self.generate_a2b(domain_A) # for test
+        self.fake_A, _ = self.generate_b2a(domain_B) # for test
 
     def train(self):
         # initialize all variables

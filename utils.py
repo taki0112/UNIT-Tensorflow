@@ -4,6 +4,7 @@ from scipy import misc
 import os, random
 import numpy as np
 
+
 class ImagePool:
     """ History of generated images
         Same logic as https://github.com/junyanz/CycleGAN/blob/master/util/image_pool.lua
