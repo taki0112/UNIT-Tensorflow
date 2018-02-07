@@ -51,7 +51,7 @@ class UNIT(object):
         self.pool_size = args.pool_size
         self.img_size = args.img_size
         self.channel = args.img_ch
-        self.augment_size = self.img_size + (20 if self.img_size == 256 else 10)
+        self.augment_size = self.img_size + (30 if self.img_size == 256 else 15)
 
         self.trainA, self.trainB = prepare_data(dataset_name=self.dataset_name, size=self.img_size)
         self.num_batches = max(len(self.trainA) // self.batch_size, len(self.trainB) // self.batch_size)
@@ -339,9 +339,9 @@ class UNIT(object):
 
                 if np.mod(counter, 100) == 0 :
                     save_images(fake_A, [self.batch_size, 1],
-                                './{}/A_{:02d}_{:04d}.jpg'.format(self.sample_dir, epoch, idx))
+                                './{}/A_{:02d}_{:04d}.jpg'.format(self.sample_dir, epoch, idx+2))
                     save_images(fake_B, [self.batch_size, 1],
-                                './{}/B_{:02d}_{:04d}.jpg'.format(self.sample_dir, epoch, idx))
+                                './{}/B_{:02d}_{:04d}.jpg'.format(self.sample_dir, epoch, idx+2))
 
                 # After an epoch, start_batch_id is set to zero
                 # non-zero value is only for the first epoch after loading pre-trained model

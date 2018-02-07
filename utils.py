@@ -86,8 +86,9 @@ def preprocessing(x):
 
 def augmentation(image, augment_size):
     seed = random.randint(0, 2 ** 31 - 1)
+    ori_image_shape = tf.shape(image)
     image = tf.image.resize_images(image, [augment_size, augment_size])
-    image = tf.random_crop(image, tf.shape(image), seed=seed)
+    image = tf.random_crop(image, ori_image_shape, seed=seed)
     image = tf.map_fn(lambda x: tf.image.random_flip_left_right(x, seed), image)
     return image
 
