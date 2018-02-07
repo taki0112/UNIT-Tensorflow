@@ -51,7 +51,7 @@ class UNIT(object):
         self.pool_size = args.pool_size
         self.img_size = args.img_size
         self.channel = args.img_ch
-        self.augment_size = self.img_size + (30 if self.img_size == 256 else 15)
+        self.augment_size = self.img_size + (20 if self.img_size == 256 else 10)
 
         self.trainA, self.trainB = prepare_data(dataset_name=self.dataset_name, size=self.img_size)
         self.num_batches = max(len(self.trainA) // self.batch_size, len(self.trainB) // self.batch_size)
@@ -60,7 +60,7 @@ class UNIT(object):
     # BEGIN of ENCODERS
     def encoder(self, x, is_training=True, reuse=False, scope="encoder"):
         channel = self.ch
-        with tf.variable_scope(scope, reuse) :
+        with tf.variable_scope(scope, reuse=reuse) :
             x = conv(x, channel, kernel=7, stride=1, pad=3, activation_fn='leaky', scope='conv_0')
 
             for i in range(1, self.n_encoder) :
@@ -70,7 +70,7 @@ class UNIT(object):
             # channel = 256
             for i in range(0, self.n_enc_resblock) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             is_training=is_training, reuse=reuse, norm_fn=self.norm, scope='resblock_'+str(i))
+                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
             return x
     # END of ENCODERS
@@ -81,10 +81,10 @@ class UNIT(object):
     # Shared residual-blocks
     def share_encoder(self, x, is_training=True, reuse=False, scope="share_encoder"):
         channel = self.ch * pow(2, self.n_encoder-1)
-        with tf.variable_scope(scope, reuse) :
+        with tf.variable_scope(scope, reuse=reuse) :
             for i in range(0, self.n_enc_share) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             is_training=is_training, reuse=reuse, norm_fn=self.norm, scope='resblock_'+str(i))
+                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
             x = gaussian_noise_layer(x)
 
@@ -92,10 +92,10 @@ class UNIT(object):
 
     def share_generator(self, x, is_training=True, reuse=False, scope="share_generator"):
         channel = self.ch * pow(2, self.n_encoder-1)
-        with tf.variable_scope(scope, reuse) :
+        with tf.variable_scope(scope, reuse=reuse) :
             for i in range(0, self.n_gen_share) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             is_training=is_training, reuse=reuse, norm_fn=self.norm, scope='resblock_'+str(i))
+                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
         return x
     # END of SHARED LAYERS
@@ -105,10 +105,10 @@ class UNIT(object):
     # BEGIN of DECODERS
     def generator(self, x, is_training=True, reuse=False, scope="generator"):
         channel = self.ch * pow(2, self.n_encoder - 1)
-        with tf.variable_scope(scope, reuse) :
+        with tf.variable_scope(scope, reuse=reuse) :
             for i in range(0, self.n_gen_resblock) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             is_training=is_training, reuse=reuse, norm_fn=self.norm, scope='resblock_'+str(i))
+                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
             for i in range(0, self.n_gen_decoder-1) :
                 x = deconv(x, channel//2, kernel=3, stride=2, activation_fn='leaky', scope='deconv_'+str(i))
