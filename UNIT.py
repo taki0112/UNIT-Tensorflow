@@ -1,6 +1,7 @@
 
 from ops import *
 from utils import *
+from glob import glob
 import time
 
 class UNIT(object):
@@ -338,10 +339,15 @@ class UNIT(object):
                       % (epoch, idx, self.num_batches, time.time() - start_time))
 
                 if np.mod(counter, 100) == 0 :
+                    save_images(batch_A_images, [self.batch_size, 1],
+                                './{}/real_A_{:02d}_{:04d}.jpg'.format(self.sample_dir, epoch, idx+2))
+                    save_images(batch_B_images, [self.batch_size, 1],
+                                './{}/real_B_{:02d}_{:04d}.jpg'.format(self.sample_dir, epoch, idx+2))
+
                     save_images(fake_A, [self.batch_size, 1],
-                                './{}/A_{:02d}_{:04d}.jpg'.format(self.sample_dir, epoch, idx+2))
+                                './{}/fake_A_{:02d}_{:04d}.jpg'.format(self.sample_dir, epoch, idx+2))
                     save_images(fake_B, [self.batch_size, 1],
-                                './{}/B_{:02d}_{:04d}.jpg'.format(self.sample_dir, epoch, idx+2))
+                                './{}/fake_B_{:02d}_{:04d}.jpg'.format(self.sample_dir, epoch, idx+2))
 
                 # After an epoch, start_batch_id is set to zero
                 # non-zero value is only for the first epoch after loading pre-trained model
@@ -385,10 +391,14 @@ class UNIT(object):
 
     def test(self):
         tf.global_variables_initializer().run()
+        test_A_files = glob('./dataset/{}/*.*'.format(self.dataset_name + '/testA'))
+        test_B_files = glob('./dataset/{}/*.*'.format(self.dataset_name + '/testB'))
+
+        """
         testA, testB = test_data(dataset_name=self.dataset_name, size=self.img_size)
         test_A_images = testA[:]
         test_B_images = testB[:]
-
+        """
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
 
         if could_load :
@@ -402,11 +412,12 @@ class UNIT(object):
         index.write("<html><body><table><tr>")
         index.write("<th>name</th><th>input</th><th>output</th></tr>")
 
-        for sample_file  in test_A_images : # A -> B
-            print('Processing image: ' + sample_file)
+        for sample_file  in test_A_files : # A -> B
+            print('Processing A image: ' + sample_file)
+            sample_image = np.asarray(load_test_data(sample_file))
             image_path = os.path.join(self.result_dir,'{0}'.format(os.path.basename(sample_file)))
 
-            fake_img = self.sess.run(self.fake_B, feed_dict = {self.domain_A : sample_file, self.prob : 0.0, self.is_training : False})
+            fake_img = self.sess.run(self.fake_B, feed_dict = {self.domain_A : sample_image, self.prob : 0.0, self.is_training : False})
 
             save_images(fake_img, [1, 1], image_path)
             index.write("<td>%s</td>" % os.path.basename(image_path))
@@ -416,11 +427,12 @@ class UNIT(object):
                 '..' + os.path.sep + image_path)))
             index.write("</tr>")
 
-        for sample_file  in test_B_images : # B -> A
-            print('Processing image: ' + sample_file)
+        for sample_file  in test_B_files : # B -> A
+            print('Processing B image: ' + sample_file)
+            sample_image = np.asarray(load_test_data(sample_file))
             image_path = os.path.join(self.result_dir,'{0}'.format(os.path.basename(sample_file)))
 
-            fake_img = self.sess.run(self.fake_A, feed_dict = {self.domain_B : sample_file, self.prob : 0.0, self.is_training : False})
+            fake_img = self.sess.run(self.fake_A, feed_dict = {self.domain_B : sample_image, self.prob : 0.0, self.is_training : False})
 
             save_images(fake_img, [1, 1], image_path)
             index.write("<td>%s</td>" % os.path.basename(image_path))
