@@ -270,13 +270,15 @@ class UNIT(object):
         self.D_optim = tf.train.AdamOptimizer(self.lr, beta1=0.5, beta2=0.999).minimize(self.Discriminator_loss, var_list=D_vars)
 
         """" Summary """
+        self.all_G_loss = tf.summary.scalar("Generator_loss", self.Generator_loss)
+        self.all_D_loss = tf.summary.scalar("Discriminator_loss", self.Discriminator_loss)
         self.G_A_loss = tf.summary.scalar("G_A_loss", Generator_A_loss)
         self.G_B_loss = tf.summary.scalar("G_B_loss", Generator_B_loss)
         self.D_A_loss = tf.summary.scalar("D_A_loss", Discriminator_A_loss)
         self.D_B_loss = tf.summary.scalar("D_B_loss", Discriminator_B_loss)
 
-        self.G_loss = tf.summary.merge([self.G_A_loss, self.G_B_loss])
-        self.D_loss = tf.summary.merge([self.D_A_loss, self.D_B_loss])
+        self.G_loss = tf.summary.merge([self.G_A_loss, self.G_B_loss, self.all_G_loss])
+        self.D_loss = tf.summary.merge([self.D_A_loss, self.D_B_loss, self.all_D_loss])
 
         """ Generated Image """
         self.fake_B, _ = self.generate_a2b(domain_A) # for test
@@ -326,17 +328,17 @@ class UNIT(object):
                 }
 
                 # Update D
-                _, summary_str = self.sess.run([self.D_optim, self.D_loss], feed_dict = train_feed_dict)
+                _, d_loss, summary_str = self.sess.run([self.D_optim, self.Discriminator_loss, self.D_loss], feed_dict = train_feed_dict)
                 self.writer.add_summary(summary_str, counter)
 
                 # Update G
-                fake_A, fake_B, _, summary_str = self.sess.run([self.fake_A, self.fake_B, self.G_optim, self.G_loss], feed_dict = train_feed_dict)
+                fake_A, fake_B, _, g_loss, summary_str = self.sess.run([self.fake_A, self.fake_B, self.G_optim, self.Generator_loss, self.G_loss], feed_dict = train_feed_dict)
                 self.writer.add_summary(summary_str, counter)
 
                 # display training status
                 counter += 1
-                print("Epoch: [%2d] [%4d/%4d] time: %4.4f" \
-                      % (epoch, idx, self.num_batches, time.time() - start_time))
+                print("Epoch: [%2d] [%4d/%4d] time: %4.4f d_loss: %.8f, g_loss: %.8f" \
+                      % (epoch, idx, self.num_batches, time.time() - start_time, d_loss, g_loss))
 
                 if np.mod(counter, 100) == 0 :
                     save_images(batch_A_images, [self.batch_size, 1],
