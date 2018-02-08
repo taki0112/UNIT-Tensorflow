@@ -29,7 +29,6 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 
 ```bash
 > python main.py --phase train --dataset cat2tiger
-> python main_multi_gpu.py --phase train --dataset cat2tiger
 ```
 * See `main.py` for other arguments
 * If you want to `multi_gpu_version`, then use `main_multi_gpu.py` (batch_size = The number of gpu)
