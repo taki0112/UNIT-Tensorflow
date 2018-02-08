@@ -381,7 +381,7 @@ class UNIT(object):
                 print("Epoch: [%2d] [%4d/%4d] time: %4.4f d_loss: %.8f, g_loss: %.8f" \
                       % (epoch, idx, self.num_batches, time.time() - start_time, d_loss, g_loss))
 
-                if np.mod(counter, 100) == 0 :
+                if np.mod(counter, 10) == 0 :
                     for gpu_id in range(self.batch_size) :
                         save_images(np.expand_dims(batch_A_images[gpu_id], axis=0), [1, 1],
                                     './{}/real_A_{}_{:02d}_{:04d}.jpg'.format(self.sample_dir, gpu_id, epoch, idx+2))
