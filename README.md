@@ -57,6 +57,10 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 ### Fail
 ![fail](./assests/fail.png)
 
+## Related works
+* [CycleGAN](https://github.com/taki0112/CycleGAN-Tensorflow)
+* [DiscoGAN](https://github.com/taki0112/DiscoGAN-Tensorflow)
+
 ## Reference
 * [Pytorch_code](https://github.com/mingyuliutw/UNIT)
 
