@@ -62,7 +62,7 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 * [DiscoGAN-Tensorflow](https://github.com/taki0112/DiscoGAN-Tensorflow)
 
 ## Reference
-* [Pytorch_code](https://github.com/mingyuliutw/UNIT)
+* [UNIT-Pytorch](https://github.com/mingyuliutw/UNIT)
 
 ## Author
 Junho Kim
