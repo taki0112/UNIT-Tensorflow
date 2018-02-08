@@ -64,6 +64,7 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 
 ## Reference
 * [UNIT-Pytorch](https://github.com/mingyuliutw/UNIT)
+* [Multi-GPU-Tensorflow](https://github.com/golbin/TensorFlow-Multi-GPUs)
 
 ## Author
 Junho Kim
