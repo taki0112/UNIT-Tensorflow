@@ -52,6 +52,7 @@ class UNIT(object):
         self.pool_size = args.pool_size
         self.img_size = args.img_size
         self.channel = args.img_ch
+        self.augmentation = args.augmentation
         self.augment_size = self.img_size + (30 if self.img_size == 256 else 15)
 
         self.trainA, self.trainB = prepare_data(dataset_name=self.dataset_name, size=self.img_size)
@@ -196,18 +197,20 @@ class UNIT(object):
 
         self.test_domain_A = tf.placeholder(tf.float32, [1, self.img_size, self.img_size, self.channel], name='test_domain_A')
         self.test_domain_B = tf.placeholder(tf.float32, [1, self.img_size, self.img_size, self.channel], name='test_domain_B')
-        """ Augmentation """
-        domain_A = tf.cond(
-            self.condition,
-            lambda : augmentation(domain_A, self.augment_size),
-            lambda : domain_A
-        )
 
-        domain_B = tf.cond(
-            self.condition,
-            lambda : augmentation(domain_B, self.augment_size),
-            lambda : domain_B
-        )
+        if self.augmentation :
+            """ Augmentation """
+            domain_A = tf.cond(
+                self.condition,
+                lambda : augmentation(domain_A, self.augment_size),
+                lambda : domain_A
+            )
+
+            domain_B = tf.cond(
+                self.condition,
+                lambda : augmentation(domain_B, self.augment_size),
+                lambda : domain_B
+            )
 
         domain_A = tf.split(domain_A, self.batch_size)
         domain_B = tf.split(domain_B, self.batch_size)
