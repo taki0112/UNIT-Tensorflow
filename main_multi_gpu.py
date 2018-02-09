@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument('--pool_size', type=int, default=50, help='The size of image buffer that stores previously generated images')
     parser.add_argument('--img_size', type=int, default=256, help='The size of image')
     parser.add_argument('--img_ch', type=int, default=3, help='The size of image channel')
-    parser.add_argument('--augmentation', type=bool, default=True, help='Image augmentation use or not')
+    parser.add_argument('--augment_flag', type=bool, default=True, help='Image augmentation use or not')
 
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoint',
                         help='Directory name to save the checkpoints')
