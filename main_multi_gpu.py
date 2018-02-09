@@ -1,8 +1,7 @@
-
 from UNIT_multi_gpu import UNIT
 import argparse
-from ops import *
 from utils import *
+
 """parsing and configuration"""
 def parse_args():
     desc = "Tensorflow implementation of UNIT"
