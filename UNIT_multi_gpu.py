@@ -445,6 +445,7 @@ class UNIT(object):
         test_A_images = testA[:]
         test_B_images = testB[:]
         """
+        self.saver = tf.train.Saver()
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
 
         if could_load :
@@ -467,10 +468,10 @@ class UNIT(object):
 
             save_images(fake_img, [1, 1], image_path)
             index.write("<td>%s</td>" % os.path.basename(image_path))
-            index.write("<td><img src='%s'></td>" % (sample_file if os.path.isabs(sample_file) else (
-                '..' + os.path.sep + sample_file)))
-            index.write("<td><img src='%s'></td>" % (image_path if os.path.isabs(image_path) else (
-                '..' + os.path.sep + image_path)))
+            index.write("<td><img src='%s' width='%d' height='%d'></td>" % (sample_file if os.path.isabs(sample_file) else (
+                '..' + os.path.sep + sample_file), self.img_size, self.img_size))
+            index.write("<td><img src='%s' width='%d' height='%d'></td>" % (image_path if os.path.isabs(image_path) else (
+                '..' + os.path.sep + image_path), self.img_size, self.img_size))
             index.write("</tr>")
 
         for sample_file  in test_B_files : # B -> A
@@ -482,9 +483,9 @@ class UNIT(object):
 
             save_images(fake_img, [1, 1], image_path)
             index.write("<td>%s</td>" % os.path.basename(image_path))
-            index.write("<td><img src='%s'></td>" % (sample_file if os.path.isabs(sample_file) else (
-                '..' + os.path.sep + sample_file)))
-            index.write("<td><img src='%s'></td>" % (image_path if os.path.isabs(image_path) else (
-                '..' + os.path.sep + image_path)))
+            index.write("<td><img src='%s' width='%d' height='%d'></td>" % (sample_file if os.path.isabs(sample_file) else (
+                '..' + os.path.sep + sample_file), self.img_size, self.img_size))
+            index.write("<td><img src='%s' width='%d' height='%d'></td>" % (image_path if os.path.isabs(image_path) else (
+                '..' + os.path.sep + image_path), self.img_size, self.img_size))
             index.write("</tr>")
         index.close()
