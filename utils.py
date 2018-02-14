@@ -75,8 +75,9 @@ def test_data(dataset_name, size) :
 def load_test_data(image_path, size=256):
     img = misc.imread(image_path)
     img = misc.imresize(img, [size, size])
-    img = img/127.5 - 1
     img = np.expand_dims(img, axis=0)
+    img = preprocessing(img)
+
     return img
 
 def preprocessing(x):
@@ -89,7 +90,6 @@ def preprocessing(x):
     """
     x = x/127.5 - 1 # -1 ~ 1
     return x
-
 
 def augmentation(image, augment_size):
     seed = random.randint(0, 2 ** 31 - 1)

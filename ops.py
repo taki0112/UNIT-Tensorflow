@@ -2,51 +2,77 @@ import tensorflow as tf
 import tensorflow.contrib as tf_contrib
 from tensorflow.contrib.layers import variance_scaling_initializer as he_init
 
-def conv(x, channels, kernel=3, stride=2, pad=0, activation_fn='leaky', scope='conv_0') :
+def conv(x, channels, kernel=3, stride=2, pad=0, normal_weight_init=False, activation_fn='leaky', scope='conv_0') :
     with tf.variable_scope(scope) :
         x = tf.pad(x, [[0,0], [pad, pad], [pad, pad], [0,0]])
 
-        if activation_fn == 'relu' :
-            x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=he_init(), strides=stride,
-                                 kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+        if normal_weight_init :
+            x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=tf.truncated_normal_initializer(stddev=0.02),
+                                 strides=stride, kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+
         else :
-            x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, strides=stride,
-                                 kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+            if activation_fn == 'relu' :
+                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=he_init(), strides=stride,
+                                     kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+            else :
+                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, strides=stride,
+                                     kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
 
 
         x = activation(x, activation_fn)
 
         return x
 
-def deconv(x, channels, kernel=3, stride=2, activation_fn='leaky', scope='deconv_0') :
+def deconv(x, channels, kernel=3, stride=2, normal_weight_init=False, activation_fn='leaky', scope='deconv_0') :
     with tf.variable_scope(scope):
-        if activation_fn == 'relu' :
-            x = tf.layers.conv2d_transpose(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=he_init(), strides=stride, padding='SAME',
-                                           kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
-        else :
-            x = tf.layers.conv2d_transpose(inputs=x, filters=channels, kernel_size=kernel, strides=stride, padding='SAME',
-                                           kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+        if normal_weight_init:
+            x = tf.layers.conv2d_transpose(inputs=x, filters=channels, kernel_size=kernel,
+                                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.02),
+                                 strides=stride, padding='SAME', kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+
+        else:
+            if activation_fn == 'relu' :
+                x = tf.layers.conv2d_transpose(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=he_init(), strides=stride, padding='SAME',
+                                               kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+            else :
+                x = tf.layers.conv2d_transpose(inputs=x, filters=channels, kernel_size=kernel, strides=stride, padding='SAME',
+                                               kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
 
         x = activation(x, activation_fn)
 
         return x
 
-def resblock(x_init, channels, kernel=3, stride=1, pad=1, dropout_ratio=0.0, is_training=True, norm_fn='instance', scope='resblock_0') :
+def resblock(x_init, channels, kernel=3, stride=1, pad=1, dropout_ratio=0.0, normal_weight_init=False, is_training=True, norm_fn='instance', scope='resblock_0') :
     assert norm_fn in ['instance', 'batch', 'weight', 'spectral', None]
     with tf.variable_scope(scope) :
         with tf.variable_scope('res1') :
             x = tf.pad(x_init, [[0, 0], [pad, pad], [pad, pad], [0, 0]])
-            x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=he_init(), strides=stride,
-                                 kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+
+            if normal_weight_init :
+                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel,
+                                     kernel_initializer=tf.truncated_normal_initializer(stddev=0.02),
+                                     strides=stride, kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+            else :
+                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=he_init(),
+                                     strides=stride, kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+
             if norm_fn == 'instance' :
                 x = instance_norm(x, 'res1_instance')
             if norm_fn == 'batch' :
                 x = batch_norm(x, is_training, 'res1_batch')
+
             x = relu(x)
         with tf.variable_scope('res2') :
             x = tf.pad(x, [[0, 0], [pad, pad], [pad, pad], [0, 0]])
-            x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, strides=stride,
-                                 kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+
+            if normal_weight_init :
+                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel,
+                                     kernel_initializer=tf.truncated_normal_initializer(stddev=0.02),
+                                     strides=stride, kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+            else :
+                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, strides=stride,
+                                     kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+
             if norm_fn == 'instance' :
                 x = instance_norm(x, 'res2_instance')
             if norm_fn == 'batch' :

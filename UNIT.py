@@ -53,6 +53,7 @@ class UNIT(object):
         self.channel = args.img_ch
         self.augment_flag = args.augment_flag
         self.augment_size = self.img_size + (30 if self.img_size == 256 else 15)
+        self.normal_weight_init = args.normal_weight_init
 
         self.trainA, self.trainB = prepare_data(dataset_name=self.dataset_name, size=self.img_size)
         self.num_batches = max(len(self.trainA) // self.batch_size, len(self.trainB) // self.batch_size)
@@ -62,15 +63,16 @@ class UNIT(object):
     def encoder(self, x, is_training=True, reuse=False, scope="encoder"):
         channel = self.ch
         with tf.variable_scope(scope, reuse=reuse) :
-            x = conv(x, channel, kernel=7, stride=1, pad=3, activation_fn='leaky', scope='conv_0')
+            x = conv(x, channel, kernel=7, stride=1, pad=3, normal_weight_init=self.normal_weight_init, activation_fn='leaky', scope='conv_0')
 
             for i in range(1, self.n_encoder) :
-                x = conv(x, channel*2, kernel=3, stride=2, pad=1, activation_fn='leaky', scope='conv_'+str(i))
+                x = conv(x, channel*2, kernel=3, stride=2, pad=1, normal_weight_init=self.normal_weight_init, activation_fn='leaky', scope='conv_'+str(i))
                 channel *= 2
 
             # channel = 256
             for i in range(0, self.n_enc_resblock) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
+                             normal_weight_init=self.normal_weight_init,
                              is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
             return x
@@ -85,6 +87,7 @@ class UNIT(object):
         with tf.variable_scope(scope, reuse=reuse) :
             for i in range(0, self.n_enc_share) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
+                             normal_weight_init=self.normal_weight_init,
                              is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
             x = gaussian_noise_layer(x)
@@ -96,6 +99,7 @@ class UNIT(object):
         with tf.variable_scope(scope, reuse=reuse) :
             for i in range(0, self.n_gen_share) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
+                             normal_weight_init=self.normal_weight_init,
                              is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
         return x
@@ -109,13 +113,14 @@ class UNIT(object):
         with tf.variable_scope(scope, reuse=reuse) :
             for i in range(0, self.n_gen_resblock) :
                 x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
+                             normal_weight_init=self.normal_weight_init,
                              is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
 
             for i in range(0, self.n_gen_decoder-1) :
-                x = deconv(x, channel//2, kernel=3, stride=2, activation_fn='leaky', scope='deconv_'+str(i))
+                x = deconv(x, channel//2, kernel=3, stride=2, normal_weight_init=self.normal_weight_init, activation_fn='leaky', scope='deconv_'+str(i))
                 channel = channel // 2
 
-            x = deconv(x, self.channel, kernel=1, stride=1, activation_fn='tanh', scope='deconv_tanh')
+            x = deconv(x, self.channel, kernel=1, stride=1, normal_weight_init=self.normal_weight_init, activation_fn='tanh', scope='deconv_tanh')
 
             return x
     # END of DECODERS
@@ -126,13 +131,13 @@ class UNIT(object):
     def discriminator(self, x, reuse=False, scope="discriminator"):
         channel = self.ch
         with tf.variable_scope(scope, reuse=reuse):
-            x = conv(x, channel, kernel=3, stride=2, pad=1, activation_fn='leaky', scope='conv_0')
+            x = conv(x, channel, kernel=3, stride=2, pad=1, normal_weight_init=self.normal_weight_init, activation_fn='leaky', scope='conv_0')
 
             for i in range(1, self.n_dis) :
-                x = conv(x, channel*2, kernel=3, stride=2, pad=1, activation_fn='leaky', scope='conv_'+str(i))
+                x = conv(x, channel*2, kernel=3, stride=2, pad=1, normal_weight_init=self.normal_weight_init, activation_fn='leaky', scope='conv_'+str(i))
                 channel *= 2
 
-            x = conv(x, channels=1, kernel=1, stride=1, pad=0, activation_fn=None, scope='dis_logit')
+            x = conv(x, channels=1, kernel=1, stride=1, pad=0, normal_weight_init=self.normal_weight_init, activation_fn=None, scope='dis_logit')
 
             return x
     # END of DISCRIMINATORS
