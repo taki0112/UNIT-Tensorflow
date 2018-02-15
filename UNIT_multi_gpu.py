@@ -14,7 +14,9 @@ class UNIT(object):
         self.dataset_name = args.dataset
 
         self.epoch = args.epoch # 100000
-        self.batch_size = args.batch_size # It will be the number of gpu
+        self.batch_size_per_gpu = args.batch_size
+        self.batch_size = args.batch_size * args.gpu_num
+        self.gpu_num = args.gpu_num
 
         self.lr = args.lr # 0.0001
         """ Weight about VAE """
@@ -216,8 +218,8 @@ class UNIT(object):
                 lambda : domain_B
             )
 
-        domain_A = tf.split(domain_A, self.batch_size)
-        domain_B = tf.split(domain_B, self.batch_size)
+        domain_A = tf.split(domain_A, self.gpu_num)
+        domain_B = tf.split(domain_B, self.gpu_num)
 
         G_A_losses= []
         G_B_losses = []
@@ -229,7 +231,7 @@ class UNIT(object):
 
         self.fake_A = []
         self.fake_B = []
-        for gpu_id in range(self.batch_size) :
+        for gpu_id in range(self.gpu_num) :
             with tf.device(tf.DeviceSpec(device_type="GPU", device_index=gpu_id)) :
                 with tf.variable_scope(tf.get_variable_scope(), reuse=(gpu_id > 0)) :
                     """ Define Encoder, Generator, Discriminator """
@@ -389,15 +391,20 @@ class UNIT(object):
                       % (epoch, idx, self.num_batches, time.time() - start_time, d_loss, g_loss))
 
                 if np.mod(counter, 10) == 0 :
-                    for gpu_id in range(self.batch_size) :
-                        save_images(np.expand_dims(batch_A_images[gpu_id], axis=0), [1, 1],
+                    batch_A_images = np.split(batch_A_images, self.gpu_num)
+                    batch_B_images = np.split(batch_B_images, self.gpu_num)
+                    fake_A = np.split(fake_A, self.gpu_num)
+                    fake_B = np.split(fake_B, self.gpu_num)
+
+                    for gpu_id in range(self.gpu_num) :
+                        save_images(batch_A_images[gpu_id], [self.batch_size_per_gpu, 1],
                                     './{}/real_A_{}_{:02d}_{:04d}.jpg'.format(self.sample_dir, gpu_id, epoch, idx+2))
-                        save_images(np.expand_dims(batch_B_images[gpu_id], axis=0), [1, 1],
+                        save_images(batch_B_images[gpu_id], [self.batch_size_per_gpu, 1],
                                     './{}/real_B_{}_{:02d}_{:04d}.jpg'.format(self.sample_dir, gpu_id, epoch, idx+2))
 
-                        save_images(np.expand_dims(fake_A[gpu_id], axis=0), [1, 1],
+                        save_images(fake_A[gpu_id], [self.batch_size_per_gpu, 1],
                                     './{}/fake_A_{}_{:02d}_{:04d}.jpg'.format(self.sample_dir, gpu_id, epoch, idx+2))
-                        save_images(np.expand_dims(fake_B[gpu_id], axis=0), [1, 1],
+                        save_images(fake_B[gpu_id], [self.batch_size_per_gpu, 1],
                                     './{}/fake_B_{}_{:02d}_{:04d}.jpg'.format(self.sample_dir, gpu_id, epoch, idx+2))
 
                 # After an epoch, start_batch_id is set to zero
