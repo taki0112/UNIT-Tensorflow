@@ -210,8 +210,11 @@ class UNIT(object):
         self.trainB_init_op = trainB_iterator.initializer
 
 
-        self.domain_A = trainA_iterator.get_next()
-        self.domain_B = trainB_iterator.get_next()
+        self.Iter_domain_A = trainA_iterator.get_next()
+        self.ITer_domain_B = trainB_iterator.get_next()
+
+        self.domain_A = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_A') # real A
+        self.domain_B = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_B') # real B
 
         self.test_domain_A = tf.placeholder(tf.float32, [1, self.img_size, self.img_size, self.channel], name='test_domain_A')
         self.test_domain_B = tf.placeholder(tf.float32, [1, self.img_size, self.img_size, self.channel], name='test_domain_B')
@@ -326,11 +329,13 @@ class UNIT(object):
             for idx in range(start_batch_id, self.num_batches):
 
 
+                batch_A_images, batch_B_images = self.sess.run([self.Iter_domain_A, self.Iter_domain_B])
+
                 train_feed_dict = {
+                    self.domain_A : batch_A_images,
+                    self.domain_B : batch_B_images,
                     self.is_training : True
                 }
-
-                batch_A_images, batch_B_images = self.sess.run([self.domain_A, self.domain_B])
 
                 # Update D
                 _, d_loss, summary_str = self.sess.run([self.D_optim, self.Discriminator_loss, self.D_loss], feed_dict = train_feed_dict)
