@@ -202,8 +202,8 @@ class UNIT(object):
         trainA = tf.data.Dataset.from_tensor_slices(self.trainA_dataset)
         trainB = tf.data.Dataset.from_tensor_slices(self.trainB_dataset)
 
-        trainA = trainA.map(Image_Data_Class.image_processing).shuffle(10000).prefetch(self.batch_size).batch(self.batch_size).repeat()
-        trainB = trainB.map(Image_Data_Class.image_processing).shuffle(10000).prefetch(self.batch_size).batch(self.batch_size).repeat()
+        trainA = trainA.map(Image_Data_Class.image_processing).shuffle(10000, num_parallel_calls=8).prefetch(self.batch_size).batch(self.batch_size).repeat()
+        trainB = trainB.map(Image_Data_Class.image_processing).shuffle(10000, num_parallel_calls=8).prefetch(self.batch_size).batch(self.batch_size).repeat()
 
         trainA_iterator = trainA.make_initializable_iterator()
         self.trainA_init_op = trainA_iterator.initializer
