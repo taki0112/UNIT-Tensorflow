@@ -310,8 +310,8 @@ class UNIT(object):
         self.fake_A = tf.concat(self.fake_A, axis=0)
         self.fake_B = tf.concat(self.fake_B, axis=0)
 
-        self.test_fake_B = self.generate_a2b(self.test_domain_A)
-        self.test_fake_A = self.generate_b2a(self.test_domain_B)
+        self.test_fake_B, _ = self.generate_a2b(self.test_domain_A)
+        self.test_fake_A, _ = self.generate_b2a(self.test_domain_B)
 
         """ Training """
         t_vars = tf.trainable_variables()
