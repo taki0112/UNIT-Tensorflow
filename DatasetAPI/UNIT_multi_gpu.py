@@ -60,7 +60,7 @@ class UNIT(object):
         # self.trainA, self.trainB = prepare_data(dataset_name=self.dataset_name, size=self.img_size)
         self.trainA_dataset = glob('./dataset/{}/*.*'.format(self.dataset_name + '/trainA'))
         self.trainB_dataset = glob('./dataset/{}/*.*'.format(self.dataset_name + '/trainB'))
-        self.num_batches = min(len(self.trainA_dataset), len(self.trainB_dataset)) // self.batch_size
+        self.num_batches = max(len(self.trainA_dataset), len(self.trainB_dataset)) // self.batch_size
 
     ##############################################################################
     # BEGIN of ENCODERS
