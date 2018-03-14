@@ -65,9 +65,9 @@ def prepare_data(dataset_name, size):
         for file in files:
             image = os.path.join(path, file)
             if path.__contains__('trainA') :
-                trainA.append(misc.imresize(misc.imread(image), [size, size]))
+                trainA.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
             if path.__contains__('trainB') :
-                trainB.append(misc.imresize(misc.imread(image), [size, size]))
+                trainB.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
 
 
     trainA = preprocessing(np.asarray(trainA))
@@ -86,9 +86,9 @@ def test_data(dataset_name, size) :
         for file in files :
             image = os.path.join(path, file)
             if path.__contains__('testA') :
-                testA.append(misc.imresize(misc.imread(image), [size, size]))
+                testA.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
             if path.__contains__('testB') :
-                testB.append(misc.imresize(misc.imread(image), [size, size]))
+                testB.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
 
     testA = preprocessing(np.asarray(testA))
     testB = preprocessing(np.asarray(testB))
@@ -96,7 +96,7 @@ def test_data(dataset_name, size) :
     return testA, testB
 
 def load_test_data(image_path, size=256):
-    img = misc.imread(image_path)
+    img = misc.imread(image_path, mode='RGB')
     img = misc.imresize(img, [size, size])
     img = np.expand_dims(img, axis=0)
     img = preprocessing(img)
