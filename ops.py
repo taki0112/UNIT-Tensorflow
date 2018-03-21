@@ -150,11 +150,11 @@ def L1_loss(x, y) :
 def discriminator_loss(real, fake, smoothing=False, use_lasgan=False) :
     if use_lasgan :
         if smoothing :
-            real_loss = tf.reduce_mean(tf.squared_difference(real, 0.9))
+            real_loss = tf.reduce_mean(tf.squared_difference(real, 0.9)) * 0.5
         else :
-            real_loss = tf.reduce_mean(tf.squared_difference(real, 1.0))
+            real_loss = tf.reduce_mean(tf.squared_difference(real, 1.0)) * 0.5
 
-        fake_loss = tf.reduce_mean(tf.square(fake))
+        fake_loss = tf.reduce_mean(tf.square(fake)) * 0.5
     else :
         if smoothing :
             real_labels = tf.fill(tf.shape(real), 0.9)
@@ -166,16 +166,16 @@ def discriminator_loss(real, fake, smoothing=False, use_lasgan=False) :
         real_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=real_labels, logits=real))
         fake_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=fake_labels, logits=fake))
 
-    loss = (real_loss + fake_loss) * 0.5
+    loss = real_loss + fake_loss
 
     return loss
 
 def generator_loss(fake, smoothing=False, use_lsgan=False) :
     if use_lsgan :
         if smoothing :
-            loss = tf.reduce_mean(tf.squared_difference(fake, 0.9))
+            loss = tf.reduce_mean(tf.squared_difference(fake, 0.9)) * 0.5
         else :
-            loss = tf.reduce_mean(tf.squared_difference(fake, 1.0))
+            loss = tf.reduce_mean(tf.squared_difference(fake, 1.0)) * 0.5
     else :
         if smoothing :
             fake_labels = tf.fill(tf.shape(fake), 0.9)
