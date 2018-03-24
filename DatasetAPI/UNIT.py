@@ -210,29 +210,29 @@ class UNIT(object):
         self.trainB_init_op = trainB_iterator.initializer
 
 
-        self.Iter_domain_A = trainA_iterator.get_next()
-        self.ITer_domain_B = trainB_iterator.get_next()
+        self.domain_A = trainA_iterator.get_next()
+        self.domain_B = trainB_iterator.get_next()
 
-        self.domain_A = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_A') # real A
-        self.domain_B = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_B') # real B
+        # self.domain_A = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_A') # real A
+        # self.domain_B = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_B') # real B
 
         self.test_domain_A = tf.placeholder(tf.float32, [1, self.img_size, self.img_size, self.channel], name='test_domain_A')
         self.test_domain_B = tf.placeholder(tf.float32, [1, self.img_size, self.img_size, self.channel], name='test_domain_B')
 
 
         """ Define Encoder, Generator, Discriminator """
-        x_aa, x_ba, x_ab, x_bb, shared = self.translation(self.domain_A, self.domain_B)
-        x_bab, shared_bab = self.generate_a2b(x_ba)
-        x_aba, shared_aba = self.generate_b2a(x_ab)
+        x_aa, self.x_ba, self.x_ab, x_bb, shared = self.translation(self.domain_A, self.domain_B)
+        x_bab, shared_bab = self.generate_a2b(self.x_ba)
+        x_aba, shared_aba = self.generate_b2a(self.x_ab)
 
         real_A_logit, real_B_logit = self.discriminate_real(self.domain_A, self.domain_B)
 
         if self.replay_memory :
             self.fake_A_pool = ImagePool(self.pool_size)  # pool of generated A
             self.fake_B_pool = ImagePool(self.pool_size)  # pool of generated B
-            fake_A_logit, fake_B_logit = self.discriminate_fake_pool(x_ba, x_ab)
+            fake_A_logit, fake_B_logit = self.discriminate_fake_pool(self.x_ba, self.x_ab)
         else :
-            fake_A_logit, fake_B_logit = self.discriminate_fake(x_ba, x_ab)
+            fake_A_logit, fake_B_logit = self.discriminate_fake(self.x_ba, self.x_ab)
 
 
 
@@ -328,12 +328,7 @@ class UNIT(object):
             # get batch data
             for idx in range(start_batch_id, self.num_batches):
 
-
-                batch_A_images, batch_B_images = self.sess.run([self.Iter_domain_A, self.Iter_domain_B])
-
                 train_feed_dict = {
-                    self.domain_A : batch_A_images,
-                    self.domain_B : batch_B_images,
                     self.is_training : True
                 }
 
@@ -342,7 +337,7 @@ class UNIT(object):
                 self.writer.add_summary(summary_str, counter)
 
                 # Update G
-                fake_A, fake_B, _, g_loss, summary_str = self.sess.run([self.domain_A, self.domain_B, self.fake_A, self.fake_B, self.G_optim, self.Generator_loss, self.G_loss], feed_dict = train_feed_dict)
+                batch_A_images, batch_B_images, fake_A, fake_B, _, g_loss, summary_str = self.sess.run([self.domain_A, self.domain_B, self.x_ba, self.x_ab, self.G_optim, self.Generator_loss, self.G_loss], feed_dict = train_feed_dict)
                 self.writer.add_summary(summary_str, counter)
 
                 # display training status

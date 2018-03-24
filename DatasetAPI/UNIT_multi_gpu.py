@@ -211,11 +211,11 @@ class UNIT(object):
         trainB_iterator = trainB.make_initializable_iterator()
         self.trainB_init_op = trainB_iterator.initializer
 
-        self.Iter_domain_A = trainA_iterator.get_next()
-        self.ITer_domain_B = trainB_iterator.get_next()
+        self.domain_A = trainA_iterator.get_next()
+        self.domain_B = trainB_iterator.get_next()
 
-        self.domain_A = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_A') # real A
-        self.domain_B = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_B') # real B
+        # self.domain_A = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_A') # real A
+        # self.domain_B = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_B') # real B
 
         self.test_domain_A = tf.placeholder(tf.float32, [1, self.img_size, self.img_size, self.channel], name='test_domain_A')
         self.test_domain_B = tf.placeholder(tf.float32, [1, self.img_size, self.img_size, self.channel], name='test_domain_B')
@@ -233,6 +233,9 @@ class UNIT(object):
 
         self.fake_A = []
         self.fake_B = []
+
+        self.real_A = []
+        self.real_B = []
         for gpu_id in range(self.gpu_num) :
             with tf.device(tf.DeviceSpec(device_type="GPU", device_index=gpu_id)) :
                 with tf.variable_scope(tf.get_variable_scope(), reuse=(gpu_id > 0)) :
@@ -301,6 +304,9 @@ class UNIT(object):
                     self.fake_A.append(fake_A)
                     self.fake_B.append(fake_B)
 
+                    self.real_A.append(domain_A[gpu_id])
+                    self.real_B.append(domain_B[gpu_id])
+
         Generator_A_loss = tf.reduce_mean(G_A_losses)
         Generator_B_loss = tf.reduce_mean(G_B_losses)
         Discriminator_A_loss = tf.reduce_mean(D_A_losses)
@@ -311,6 +317,9 @@ class UNIT(object):
 
         self.fake_A = tf.concat(self.fake_A, axis=0)
         self.fake_B = tf.concat(self.fake_B, axis=0)
+
+        self.real_A = tf.concat(self.real_A, axis=0)
+        self.real_B = tf.concat(self.real_B, axis=0)
 
         self.test_fake_B, _ = self.generate_a2b(self.test_domain_A)
         self.test_fake_A, _ = self.generate_b2a(self.test_domain_B)
@@ -369,11 +378,8 @@ class UNIT(object):
             # get batch data
             for idx in range(start_batch_id, self.num_batches):
 
-                batch_A_images, batch_B_images = self.sess.run([self.Iter_domain_A, self.Iter_domain_B])
-
                 train_feed_dict = {
-                    self.domain_A : batch_A_images,
-                    self.domain_B : batch_B_images,
+
                     self.is_training : True
                 }
 
@@ -382,7 +388,7 @@ class UNIT(object):
                 self.writer.add_summary(summary_str, counter)
 
                 # Update G
-                fake_A, fake_B, _, g_loss, summary_str = self.sess.run([self.fake_A, self.fake_B, self.G_optim, self.Generator_loss, self.G_loss], feed_dict = train_feed_dict)
+                batch_A_images, batch_B_images, fake_A, fake_B, _, g_loss, summary_str = self.sess.run([self.real_A, self.real_B, self.fake_A, self.fake_B, self.G_optim, self.Generator_loss, self.G_loss], feed_dict = train_feed_dict)
                 self.writer.add_summary(summary_str, counter)
 
                 # display training status
