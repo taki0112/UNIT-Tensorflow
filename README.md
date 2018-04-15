@@ -34,6 +34,11 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 * If you want to `multi_gpu_version`, then use `main_multi_gpu.py` (batch_size = The batch_size per gpu)
 * If you want to `faster_UNIT`, then use `DatasetAPI`
 
+## Issue
+### Too much Slow !!!
+* The slower reason is that it stores checkpoints
+* If you want to speed up, do not save checkpoints per iteration
+
 ## Arichitecture
 ![architecture](./assests/architecture.png)
 
