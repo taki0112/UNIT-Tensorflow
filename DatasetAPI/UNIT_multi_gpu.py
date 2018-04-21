@@ -325,7 +325,7 @@ class UNIT(object) :
 
         """ Training """
         t_vars = tf.trainable_variables()
-        G_vars = [var for var in t_vars if 'decoder' in var.name or 'encoder' in var.name]
+        G_vars = [var for var in t_vars if 'generator' in var.name or 'encoder' in var.name]
         D_vars = [var for var in t_vars if 'discriminator' in var.name]
 
         self.G_optim = tf.train.AdamOptimizer(self.lr, beta1=0.5, beta2=0.999).minimize(self.Generator_loss, var_list=G_vars)
