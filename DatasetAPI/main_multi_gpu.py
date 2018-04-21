@@ -1,4 +1,4 @@
-from UNIT_multi_gpu import UNIT
+from UNIT import UNIT
 import argparse
 from utils import *
 
@@ -7,10 +7,12 @@ def parse_args():
     desc = "Tensorflow implementation of UNIT"
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('--phase', type=str, default='train', help='train or test ?')
-    parser.add_argument('--dataset', type=str, default='cat2dog', help='dataset_name')
+    parser.add_argument('--dataset', type=str, default='summer2winter', help='dataset_name')
+    parser.add_argument('--augment_flag', type=bool, default=False, help='Image augmentation use or not')
 
-    parser.add_argument('--epoch', type=int, default=200, help='The number of epochs to run')
-    parser.add_argument('--batch_size', type=int, default=1, help='The size of batch per gpu')
+    parser.add_argument('--epoch', type=int, default=5, help='The number of epochs to run')
+    parser.add_argument('--iteration', type=int, default=100000, help='The number of training iterations')
+    parser.add_argument('--batch_size', type=int, default=1, help='The batch size')
     parser.add_argument('--gpu_num', type=int, default=8, help='The number of gpu')
 
     parser.add_argument('--lr', type=float, default=0.0001, help='The learning rate')
@@ -20,6 +22,8 @@ def parse_args():
     parser.add_argument('--KL_cycle_weight', type=float, default=0.1, help='Weight about VAE Cycle, lambda3')
     parser.add_argument('--L1_cycle_weight', type=float, default=100.0, help='Weight about VAE Cycle, lambda4')
 
+    parser.add_argument('--gan_type', type=str, default='gan', help='GAN loss type [gan / lsgan]')
+
     parser.add_argument('--ch', type=int, default=64, help='base channel number per layer')
     parser.add_argument('--n_encoder', type=int, default=3, help='The number of encoder')
     parser.add_argument('--n_enc_resblock', type=int, default=3, help='The number of encoder_resblock')
@@ -27,18 +31,11 @@ def parse_args():
     parser.add_argument('--n_gen_share', type=int, default=1, help='The number of share_generator')
     parser.add_argument('--n_gen_resblock', type=int, default=3, help='The number of generator_resblock')
     parser.add_argument('--n_gen_decoder', type=int, default=3, help='The number of generator_decoder')
+
     parser.add_argument('--n_dis', type=int, default=6, help='The number of discriminator layer')
 
-    parser.add_argument('--res_dropout', type=float, default=0.0, help='The dropout ration of Resblock')
-    parser.add_argument('--smoothing', type=bool, default=False, help='smoothing loss use or not')
-    parser.add_argument('--lsgan', type=bool, default=False, help='lsgan loss use or not')
-    parser.add_argument('--norm', type=str, default='instance', help='The norm type')
-    parser.add_argument('--replay_memory', type=bool, default=False, help='discriminator pool use or not')
-    parser.add_argument('--pool_size', type=int, default=50, help='The size of image buffer that stores previously generated images')
     parser.add_argument('--img_size', type=int, default=256, help='The size of image')
     parser.add_argument('--img_ch', type=int, default=3, help='The size of image channel')
-    parser.add_argument('--augment_flag', type=bool, default=True, help='Image augmentation use or not')
-    parser.add_argument('--normal_weight_init', type=bool, default=True, help='normal initialization use or not')
 
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoint',
                         help='Directory name to save the checkpoints')

@@ -4,38 +4,12 @@ from scipy import misc
 import os, random
 import numpy as np
 
-
-class ImagePool:
-    """ History of generated images
-        Same logic as https://github.com/junyanz/CycleGAN/blob/master/util/image_pool.lua
-    """
-
-    def __init__(self, pool_size):
-        self.pool_size = pool_size
-        self.images = []
-
-    def query(self, image):
-        if self.pool_size == 0:
-            return image
-
-        if len(self.images) < self.pool_size:
-            self.images.append(image)
-            return image
-        else:
-            p = random.random()
-            if p > 0.5:
-                # use old image
-                random_id = random.randrange(0, self.pool_size)
-                tmp = self.images[random_id].copy()
-                self.images[random_id] = image.copy()
-                return tmp
-            else:
-                return image
+# https://people.eecs.berkeley.edu/~taesung_park/CycleGAN/datasets/
+# https://people.eecs.berkeley.edu/~tinghuiz/projects/pix2pix/datasets/
 
 class ImageData:
 
-    def __init__(self, batch_size, load_size, channels, augment_flag):
-        self.batch_size = batch_size
+    def __init__(self, load_size, channels, augment_flag=False):
         self.load_size = load_size
         self.channels = channels
         self.augment_flag = augment_flag
@@ -55,46 +29,6 @@ class ImageData:
         return img
 
 
-
-def prepare_data(dataset_name, size):
-    data_path = os.path.join("./dataset", dataset_name)
-
-    trainA = []
-    trainB = []
-    for path, dir, files in os.walk(data_path):
-        for file in files:
-            image = os.path.join(path, file)
-            if path.__contains__('trainA') :
-                trainA.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
-            if path.__contains__('trainB') :
-                trainB.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
-
-
-    trainA = preprocessing(np.asarray(trainA))
-    trainB = preprocessing(np.asarray(trainB))
-
-    np.random.shuffle(trainA)
-    np.random.shuffle(trainB)
-
-    return trainA, trainB
-
-def test_data(dataset_name, size) :
-    data_path = os.path.join("./dataset", dataset_name)
-    testA = []
-    testB = []
-    for path, dir, files in os.walk(data_path) :
-        for file in files :
-            image = os.path.join(path, file)
-            if path.__contains__('testA') :
-                testA.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
-            if path.__contains__('testB') :
-                testB.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
-
-    testA = preprocessing(np.asarray(testA))
-    testB = preprocessing(np.asarray(testB))
-
-    return testA, testB
-
 def load_test_data(image_path, size=256):
     img = misc.imread(image_path, mode='RGB')
     img = misc.imresize(img, [size, size])
@@ -104,13 +38,6 @@ def load_test_data(image_path, size=256):
     return img
 
 def preprocessing(x):
-    """
-    # Create Normal distribution
-    x = x.astype('float32')
-    x[:, :, :, 0] = (x[:, :, :, 0] - np.mean(x[:, :, :, 0])) / np.std(x[:, :, :, 0])
-    x[:, :, :, 1] = (x[:, :, :, 1] - np.mean(x[:, :, :, 1])) / np.std(x[:, :, :, 1])
-    x[:, :, :, 2] = (x[:, :, :, 2] - np.mean(x[:, :, :, 2])) / np.std(x[:, :, :, 2])
-    """
     x = x/127.5 - 1 # -1 ~ 1
     return x
 

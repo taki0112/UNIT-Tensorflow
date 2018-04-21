@@ -2,8 +2,9 @@ from ops import *
 from utils import *
 from glob import glob
 import time
+from tensorflow.contrib.data import batch_and_drop_remainder
 
-class UNIT(object):
+class UNIT(object) :
     def __init__(self, sess, args):
         self.model_name = 'UNIT'
         self.sess = sess
@@ -12,13 +13,24 @@ class UNIT(object):
         self.log_dir = args.log_dir
         self.sample_dir = args.sample_dir
         self.dataset_name = args.dataset
+        self.augment_flag = args.augment_flag
 
-        self.epoch = args.epoch # 100000
+        self.epoch = args.epoch
+        self.iteration = args.iteration
+        self.gan_type = args.gan_type
+
         self.batch_size_per_gpu = args.batch_size
         self.batch_size = args.batch_size * args.gpu_num
         self.gpu_num = args.gpu_num
+        self.print_freq = args.print_freq
+        self.save_freq = args.save_freq
 
-        self.lr = args.lr # 0.0001
+        self.img_size = args.img_size
+        self.img_ch = args.img_ch
+
+        self.init_lr = args.lr
+        self.ch = args.ch
+
         """ Weight about VAE """
         self.KL_weight = args.KL_weight # lambda 1
         self.L1_weight = args.L1_weight # lambda 2
@@ -30,9 +42,7 @@ class UNIT(object):
         """ Weight about GAN """
         self.GAN_weight = args.GAN_weight # lambda 0
 
-
         """ Encoder """
-        self.ch = args.ch # base channel number per layer
         self.n_encoder = args.n_encoder
         self.n_enc_resblock = args.n_enc_resblock
         self.n_enc_share = args.n_enc_share
@@ -43,117 +53,137 @@ class UNIT(object):
         self.n_gen_decoder = args.n_gen_decoder
 
         """ Discriminator """
-        self.n_dis = args.n_dis # + 2
+        self.n_dis = args.n_dis
 
-        self.res_dropout = args.res_dropout
-        self.smoothing = args.smoothing
-        self.lsgan = args.lsgan
-        self.norm = args.norm
-        self.replay_memory = args.replay_memory
-        self.pool_size = args.pool_size
-        self.img_size = args.img_size
-        self.channel = args.img_ch
-        self.augment_flag = args.augment_flag
-        self.augment_size = self.img_size + (30 if self.img_size == 256 else 15)
-        self.normal_weight_init = args.normal_weight_init
+        self.sample_dir = os.path.join(args.sample_dir, self.model_dir)
+        check_folder(self.sample_dir)
 
-        # self.trainA, self.trainB = prepare_data(dataset_name=self.dataset_name, size=self.img_size)
         self.trainA_dataset = glob('./dataset/{}/*.*'.format(self.dataset_name + '/trainA'))
         self.trainB_dataset = glob('./dataset/{}/*.*'.format(self.dataset_name + '/trainB'))
-        self.num_batches = max(len(self.trainA_dataset), len(self.trainB_dataset)) // self.batch_size
+        self.dataset_num = max(len(self.trainA_dataset), len(self.trainB_dataset))
 
-    ##############################################################################
-    # BEGIN of ENCODERS
-    def encoder(self, x, is_training=True, reuse=False, scope="encoder"):
+        print("##### Information #####")
+        print("# gan type : ", self.gan_type)
+        print("# dataset : ", self.dataset_name)
+        print("# max dataset number : ", self.dataset_num)
+        print("# batch_size : ", self.batch_size)
+        print("# epoch : ", self.epoch)
+        print("# iteration per epoch : ", self.iteration)
+
+        print()
+
+        print("##### Encoder #####")
+        print("# encoder blocks : ", self.n_encoder)
+        print("# encoder resblock : ", self.n_enc_resblock)
+        print("# encoder share : ", self.n_enc_share)
+
+        print()
+
+        print("##### Decoder #####")
+        print("# decoder share : ", self.n_gen_share)
+        print("# decoder resblock : ", self.n_gen_resblock)
+        print("# decoder blocks : ", self.n_gen_decoder)
+
+        print()
+
+        print("##### Discriminator #####")
+        print("# Discriminator layer : ", self.n_dis)
+
+        ##############################################################################
+        # BEGIN of ENCODERS
+
+    def encoder(self, x, reuse=False, scope="encoder"):
         channel = self.ch
-        with tf.variable_scope(scope, reuse=reuse) :
-            x = conv(x, channel, kernel=7, stride=1, pad=3, normal_weight_init=self.normal_weight_init, activation_fn='leaky', scope='conv_0')
+        with tf.variable_scope(scope, reuse=reuse):
+            x = conv(x, channel, kernel=7, stride=1, pad=3, scope='conv_0')
+            x = lrelu(x, 0.01)
 
-            for i in range(1, self.n_encoder) :
-                x = conv(x, channel*2, kernel=3, stride=2, pad=1, normal_weight_init=self.normal_weight_init, activation_fn='leaky', scope='conv_'+str(i))
+            for i in range(1, self.n_encoder):
+                x = conv(x, channel * 2, kernel=3, stride=2, pad=1, scope='conv_' + str(i))
+                x = lrelu(x, 0.01)
                 channel *= 2
 
             # channel = 256
-            for i in range(0, self.n_enc_resblock) :
-                x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             normal_weight_init=self.normal_weight_init,
-                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+            for i in range(0, self.n_enc_resblock):
+                x = resblock(x, channel, scope='resblock_'+str(i))
 
             return x
-    # END of ENCODERS
-    ##############################################################################
+        # END of ENCODERS
+        ##############################################################################
 
-    ##############################################################################
-    # BEGIN of SHARED LAYERS
-    # Shared residual-blocks
-    def share_encoder(self, x, is_training=True, reuse=False, scope="share_encoder"):
-        channel = self.ch * pow(2, self.n_encoder-1)
-        with tf.variable_scope(scope, reuse=reuse) :
-            for i in range(0, self.n_enc_share) :
-                x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             normal_weight_init=self.normal_weight_init,
-                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+        ##############################################################################
+        # BEGIN of SHARED LAYERS
+        # Shared residual-blocks
+
+    def share_encoder(self, x, reuse=False, scope="share_encoder"):
+        channel = self.ch * pow(2, self.n_encoder - 1)
+        with tf.variable_scope(scope, reuse=reuse):
+            for i in range(0, self.n_enc_share):
+                x = resblock(x, channel, scope='resblock_' + str(i))
 
             x = gaussian_noise_layer(x)
 
             return x
 
-    def share_generator(self, x, is_training=True, reuse=False, scope="share_generator"):
-        channel = self.ch * pow(2, self.n_encoder-1)
-        with tf.variable_scope(scope, reuse=reuse) :
-            for i in range(0, self.n_gen_share) :
-                x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             normal_weight_init=self.normal_weight_init,
-                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+    def share_generator(self, x, reuse=False, scope="share_generator"):
+        channel = self.ch * pow(2, self.n_encoder - 1)
+        with tf.variable_scope(scope, reuse=reuse):
+            for i in range(0, self.n_gen_share):
+                x = resblock(x, channel, scope='resblock_' + str(i))
 
         return x
-    # END of SHARED LAYERS
-    ##############################################################################
+        # END of SHARED LAYERS
+        ##############################################################################
 
-    ##############################################################################
-    # BEGIN of DECODERS
-    def generator(self, x, is_training=True, reuse=False, scope="generator"):
+        ##############################################################################
+        # BEGIN of DECODERS
+
+    def generator(self, x, reuse=False, scope="generator"):
         channel = self.ch * pow(2, self.n_encoder - 1)
-        with tf.variable_scope(scope, reuse=reuse) :
-            for i in range(0, self.n_gen_resblock) :
-                x = resblock(x, channel, kernel=3, stride=1, pad=1, dropout_ratio=self.res_dropout,
-                             normal_weight_init=self.normal_weight_init,
-                             is_training=is_training, norm_fn=self.norm, scope='resblock_'+str(i))
+        with tf.variable_scope(scope, reuse=reuse):
+            for i in range(0, self.n_gen_resblock):
+                x = resblock(x, channel, scope='resblock_' + str(i))
 
-            for i in range(0, self.n_gen_decoder-1) :
-                x = deconv(x, channel//2, kernel=3, stride=2, normal_weight_init=self.normal_weight_init, activation_fn='leaky', scope='deconv_'+str(i))
+            for i in range(0, self.n_gen_decoder - 1):
+                x = deconv(x, channel // 2, kernel=3, stride=2, scope='deconv_' + str(i))
+                x = lrelu(x, 0.01)
                 channel = channel // 2
 
-            x = deconv(x, self.channel, kernel=1, stride=1, normal_weight_init=self.normal_weight_init, activation_fn='tanh', scope='deconv_tanh')
+            x = deconv(x, channels=3, kernel=1, stride=1, scope='G_logit')
+            x = tanh(x)
 
             return x
-    # END of DECODERS
-    ##############################################################################
+        # END of DECODERS
+        ##############################################################################
 
-    ##############################################################################
-    # BEGIN of DISCRIMINATORS
+        ##############################################################################
+        # BEGIN of DISCRIMINATORS
+
     def discriminator(self, x, reuse=False, scope="discriminator"):
         channel = self.ch
         with tf.variable_scope(scope, reuse=reuse):
-            x = conv(x, channel, kernel=3, stride=2, pad=1, normal_weight_init=self.normal_weight_init, activation_fn='leaky', scope='conv_0')
+            x = conv(x, channel, kernel=3, stride=2, pad=1, scope='conv_0')
+            x = lrelu(x, 0.01)
 
-            for i in range(1, self.n_dis) :
-                x = conv(x, channel*2, kernel=3, stride=2, pad=1, normal_weight_init=self.normal_weight_init, activation_fn='leaky', scope='conv_'+str(i))
+            for i in range(1, self.n_dis):
+                x = conv(x, channel * 2, kernel=3, stride=2, pad=1, scope='conv_' + str(i))
+                x = lrelu(x, 0.01)
                 channel *= 2
 
-            x = conv(x, channels=1, kernel=1, stride=1, pad=0, normal_weight_init=self.normal_weight_init, activation_fn=None, scope='dis_logit')
+            x = conv(x, channels=1, kernel=1, stride=1, scope='D_logit')
 
             return x
+
     # END of DISCRIMINATORS
     ##############################################################################
 
     def translation(self, x_A, x_B):
-        out = tf.concat([self.encoder(x_A, self.is_training, scope="encoder_A"), self.encoder(x_B, self.is_training, scope="encoder_B")], axis=0)
-        shared = self.share_encoder(out, self.is_training)
-        out = self.share_generator(shared, self.is_training)
+        out = tf.concat([self.encoder(x_A, scope="encoder_A"), self.encoder(x_B, scope="encoder_B")], axis=0)
+        shared = self.share_encoder(out)
+        out = self.share_generator(shared)
 
-        out_A = self.generator(out, self.is_training, scope="generator_A")
-        out_B = self.generator(out, self.is_training, scope="generator_B")
+        out_A = self.generator(out, scope="generator_A")
+        out_B = self.generator(out, scope="generator_B")
 
         x_Aa, x_Ba = tf.split(out_A, 2, axis=0)
         x_Ab, x_Bb = tf.split(out_B, 2, axis=0)
@@ -161,18 +191,18 @@ class UNIT(object):
         return x_Aa, x_Ba, x_Ab, x_Bb, shared
 
     def generate_a2b(self, x_A):
-        out = self.encoder(x_A, self.is_training, reuse=True, scope="encoder_A")
-        shared = self.share_encoder(out, self.is_training, reuse=True)
-        out = self.share_generator(shared, self.is_training, reuse=True)
-        out = self.generator(out, self.is_training, reuse=True, scope="generator_B")
+        out = self.encoder(x_A, reuse=True, scope="encoder_A")
+        shared = self.share_encoder(out, reuse=True)
+        out = self.share_generator(shared, reuse=True)
+        out = self.generator(out, reuse=True, scope="generator_B")
 
         return out, shared
 
     def generate_b2a(self, x_B):
-        out = self.encoder(x_B, self.is_training, reuse=True, scope="encoder_B")
-        shared = self.share_encoder(out, self.is_training, reuse=True)
-        out = self.share_generator(shared, self.is_training, reuse=True)
-        out = self.generator(out, self.is_training, reuse=True, scope="generator_A")
+        out = self.encoder(x_B, reuse=True, scope="encoder_B")
+        shared = self.share_encoder(out, reuse=True)
+        out = self.share_generator(shared, reuse=True)
+        out = self.generator(out, reuse=True, scope="generator_A")
 
         return out, shared
 
@@ -188,42 +218,28 @@ class UNIT(object):
 
         return fake_A_logit, fake_B_logit
 
-    def discriminate_fake_pool(self, x_ba, x_ab):
-        fake_A_pool_logit = self.discriminator(self.fake_A_pool.query(x_ba), reuse=True, scope="discriminator_A") # replay memory
-        fake_B_pool_logit = self.discriminator(self.fake_B_pool.query(x_ab), reuse=True, scope="discriminator_B") # replay memory
-
-        return fake_A_pool_logit, fake_B_pool_logit
-
     def build_model(self):
-        self.is_training = tf.placeholder(tf.bool)
+        self.lr = tf.placeholder(tf.float32, name='learning_rate')
 
         """ Input Image"""
-        Image_Data_Class = ImageData(self.batch_size, self.img_size, self.channel, self.augment_flag)
+        Image_Data_Class = ImageData(self.img_size, self.img_ch, self.augment_flag)
+
         trainA = tf.data.Dataset.from_tensor_slices(self.trainA_dataset)
         trainB = tf.data.Dataset.from_tensor_slices(self.trainB_dataset)
 
-        trainA = trainA.map(Image_Data_Class.image_processing).shuffle(10000, num_parallel_calls=8).prefetch(self.batch_size).batch(self.batch_size).repeat()
-        trainB = trainB.map(Image_Data_Class.image_processing).shuffle(10000, num_parallel_calls=8).prefetch(self.batch_size).batch(self.batch_size).repeat()
+        trainA = trainA.prefetch(self.batch_size).shuffle(self.dataset_num).map(Image_Data_Class.image_processing, num_parallel_calls=8).apply(batch_and_drop_remainder(self.batch_size)).repeat()
+        trainB = trainB.prefetch(self.batch_size).shuffle(self.dataset_num).map(Image_Data_Class.image_processing, num_parallel_calls=8).apply(batch_and_drop_remainder(self.batch_size)).repeat()
 
-        trainA_iterator = trainA.make_initializable_iterator()
-        self.trainA_init_op = trainA_iterator.initializer
-
-        trainB_iterator = trainB.make_initializable_iterator()
-        self.trainB_init_op = trainB_iterator.initializer
+        trainA_iterator = trainA.make_one_shot_iterator()
+        trainB_iterator = trainB.make_one_shot_iterator()
 
         self.domain_A = trainA_iterator.get_next()
         self.domain_B = trainB_iterator.get_next()
 
-        # self.domain_A = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_A') # real A
-        # self.domain_B = tf.placeholder(tf.float32, [self.batch_size, self.img_size, self.img_size, self.img_ch], name='domain_B') # real B
-
-        self.test_domain_A = tf.placeholder(tf.float32, [1, self.img_size, self.img_size, self.channel], name='test_domain_A')
-        self.test_domain_B = tf.placeholder(tf.float32, [1, self.img_size, self.img_size, self.channel], name='test_domain_B')
-
         domain_A = tf.split(self.domain_A, self.gpu_num)
         domain_B = tf.split(self.domain_B, self.gpu_num)
 
-        G_A_losses= []
+        G_A_losses = []
         G_B_losses = []
         D_A_losses = []
         D_B_losses = []
@@ -236,9 +252,10 @@ class UNIT(object):
 
         self.real_A = []
         self.real_B = []
-        for gpu_id in range(self.gpu_num) :
-            with tf.device(tf.DeviceSpec(device_type="GPU", device_index=gpu_id)) :
-                with tf.variable_scope(tf.get_variable_scope(), reuse=(gpu_id > 0)) :
+
+        for gpu_id in range(self.gpu_num):
+            with tf.device(tf.DeviceSpec(device_type="GPU", device_index=gpu_id)):
+                with tf.variable_scope(tf.get_variable_scope(), reuse=(gpu_id > 0)):
                     """ Define Encoder, Generator, Discriminator """
                     x_aa, x_ba, x_ab, x_bb, shared = self.translation(domain_A[gpu_id], domain_B[gpu_id])
                     x_bab, shared_bab = self.generate_a2b(x_ba)
@@ -246,30 +263,24 @@ class UNIT(object):
 
                     real_A_logit, real_B_logit = self.discriminate_real(domain_A[gpu_id], domain_B[gpu_id])
 
-                    if self.replay_memory :
-                        self.fake_A_pool = ImagePool(self.pool_size)  # pool of generated A
-                        self.fake_B_pool = ImagePool(self.pool_size)  # pool of generated B
-                        fake_A_logit, fake_B_logit = self.discriminate_fake_pool(x_ba, x_ab)
-                    else :
-                        fake_A_logit, fake_B_logit = self.discriminate_fake(x_ba, x_ab)
 
-
+                    fake_A_logit, fake_B_logit = self.discriminate_fake(x_ba, x_ab)
 
                     """ Define Loss """
-                    G_ad_loss_a = generator_loss(fake_A_logit, smoothing=self.smoothing, use_lsgan=self.lsgan)
-                    G_ad_loss_b = generator_loss(fake_B_logit, smoothing=self.smoothing, use_lsgan=self.lsgan)
+                    G_ad_loss_a = generator_loss(self.gan_type, fake_A_logit)
+                    G_ad_loss_b = generator_loss(self.gan_type, fake_B_logit)
 
-                    D_ad_loss_a = discriminator_loss(real_A_logit, fake_A_logit, smoothing=self.smoothing, use_lasgan=self.lsgan)
-                    D_ad_loss_b = discriminator_loss(real_B_logit, fake_B_logit, smoothing=self.smoothing, use_lasgan=self.lsgan)
+                    D_ad_loss_a = discriminator_loss(self.gan_type, real_A_logit, fake_A_logit)
+                    D_ad_loss_b = discriminator_loss(self.gan_type, real_B_logit, fake_B_logit)
 
                     enc_loss = KL_divergence(shared)
                     enc_bab_loss = KL_divergence(shared_bab)
                     enc_aba_loss = KL_divergence(shared_aba)
 
-                    l1_loss_a = L1_loss(x_aa, domain_A[gpu_id]) # identity
-                    l1_loss_b = L1_loss(x_bb, domain_B[gpu_id]) # identity
-                    l1_loss_aba = L1_loss(x_aba, domain_A[gpu_id]) # reconstruction
-                    l1_loss_bab = L1_loss(x_bab, domain_B[gpu_id]) # reconstruction
+                    l1_loss_a = L1_loss(x_aa, domain_A[gpu_id])  # identity
+                    l1_loss_b = L1_loss(x_bb, domain_B[gpu_id])  # identity
+                    l1_loss_aba = L1_loss(x_aba, domain_A[gpu_id])  # reconstruction
+                    l1_loss_bab = L1_loss(x_bab, domain_B[gpu_id])  # reconstruction
 
                     Generator_A_loss_split = self.GAN_weight * G_ad_loss_a + \
                                        self.L1_weight * l1_loss_a + \
@@ -289,10 +300,6 @@ class UNIT(object):
                     Generator_loss_split = Generator_A_loss_split + Generator_B_loss_split
                     Discriminator_loss_split = Discriminator_A_loss_split + Discriminator_B_loss_split
 
-                    """ Generated Image """
-                    fake_B, _ = self.generate_a2b(domain_A[gpu_id])  # for test
-                    fake_A, _ = self.generate_b2a(domain_B[gpu_id])  # for test
-
                     G_A_losses.append(Generator_A_loss_split)
                     G_B_losses.append(Generator_B_loss_split)
                     D_A_losses.append(Discriminator_A_loss_split)
@@ -301,8 +308,8 @@ class UNIT(object):
                     G_losses.append(Generator_loss_split)
                     D_losses.append(Discriminator_loss_split)
 
-                    self.fake_A.append(fake_A)
-                    self.fake_B.append(fake_B)
+                    self.fake_A.append(x_ba)
+                    self.fake_B.append(x_ab)
 
                     self.real_A.append(domain_A[gpu_id])
                     self.real_B.append(domain_B[gpu_id])
@@ -315,24 +322,15 @@ class UNIT(object):
         self.Generator_loss = tf.reduce_mean(G_losses)
         self.Discriminator_loss = tf.reduce_mean(D_losses)
 
-        self.fake_A = tf.concat(self.fake_A, axis=0)
-        self.fake_B = tf.concat(self.fake_B, axis=0)
-
-        self.real_A = tf.concat(self.real_A, axis=0)
-        self.real_B = tf.concat(self.real_B, axis=0)
-
-        self.test_fake_B, _ = self.generate_a2b(self.test_domain_A)
-        self.test_fake_A, _ = self.generate_b2a(self.test_domain_B)
 
         """ Training """
         t_vars = tf.trainable_variables()
-        G_vars = [var for var in t_vars if ('generator' in var.name) or ('encoder' in var.name)]
+        G_vars = [var for var in t_vars if 'decoder' in var.name or 'encoder' in var.name]
         D_vars = [var for var in t_vars if 'discriminator' in var.name]
 
+        self.G_optim = tf.train.AdamOptimizer(self.lr, beta1=0.5, beta2=0.999).minimize(self.Generator_loss, var_list=G_vars)
+        self.D_optim = tf.train.AdamOptimizer(self.lr, beta1=0.5, beta2=0.999).minimize(self.Discriminator_loss, var_list=D_vars)
 
-        # with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-        self.G_optim = tf.train.AdamOptimizer(self.lr, beta1=0.5, beta2=0.999).minimize(self.Generator_loss, colocate_gradients_with_ops=True, var_list=G_vars)
-        self.D_optim = tf.train.AdamOptimizer(self.lr, beta1=0.5, beta2=0.999).minimize(self.Discriminator_loss, colocate_gradients_with_ops=True, var_list=D_vars)
         """" Summary """
         self.all_G_loss = tf.summary.scalar("Generator_loss", self.Generator_loss)
         self.all_D_loss = tf.summary.scalar("Discriminator_loss", self.Discriminator_loss)
@@ -344,26 +342,34 @@ class UNIT(object):
         self.G_loss = tf.summary.merge([self.G_A_loss, self.G_B_loss, self.all_G_loss])
         self.D_loss = tf.summary.merge([self.D_A_loss, self.D_B_loss, self.all_D_loss])
 
+        """ Image """
+        self.fake_A = tf.squeeze(self.fake_A)
+        self.fake_B = tf.squeeze(self.fake_B)
+
+        self.real_A = tf.squeeze(self.real_A)
+        self.real_B = tf.squeeze(self.real_B)
+
+        """ Test """
+        self.test_image = tf.placeholder(tf.float32, [1, self.img_size, self.img_size, self.img_ch], name='test_image')
+
+        self.test_fake_A, _ = self.generate_b2a(self.test_image)
+        self.test_fake_B, _ = self.generate_a2b(self.test_image)
 
     def train(self):
         # initialize all variables
         tf.global_variables_initializer().run()
-        self.trainA_init_op.run()
-        self.trainB_init_op.run()
-
 
         # saver to save model
         self.saver = tf.train.Saver()
 
         # summary writer
-        self.writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_name, self.sess.graph)
-
+        self.writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir, self.sess.graph)
 
         # restore check-point if it exits
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
         if could_load:
-            start_epoch = (int)(checkpoint_counter / self.num_batches)
-            start_batch_id = checkpoint_counter - start_epoch * self.num_batches
+            start_epoch = (int)(checkpoint_counter / self.iteration)
+            start_batch_id = checkpoint_counter - start_epoch * self.iteration
             counter = checkpoint_counter
             print(" [*] Load SUCCESS")
         else:
@@ -374,13 +380,11 @@ class UNIT(object):
 
         # loop for epoch
         start_time = time.time()
+        lr = self.init_lr
         for epoch in range(start_epoch, self.epoch):
-            # get batch data
-            for idx in range(start_batch_id, self.num_batches):
-
+            for idx in range(start_batch_id, self.iteration):
                 train_feed_dict = {
-
-                    self.is_training : True
+                    self.lr : lr
                 }
 
                 # Update D
@@ -393,44 +397,36 @@ class UNIT(object):
 
                 # display training status
                 counter += 1
-                print("Epoch: [%2d] [%4d/%4d] time: %4.4f d_loss: %.8f, g_loss: %.8f" \
-                      % (epoch, idx, self.num_batches, time.time() - start_time, d_loss, g_loss))
+                print("Epoch: [%2d] [%6d/%6d] time: %4.4f d_loss: %.8f, g_loss: %.8f" \
+                      % (epoch, idx, self.iteration, time.time() - start_time, d_loss, g_loss))
 
-                if np.mod(counter, 10) == 0 :
-                    batch_A_images = np.split(batch_A_images, self.gpu_num)
-                    batch_B_images = np.split(batch_B_images, self.gpu_num)
-                    fake_A = np.split(fake_A, self.gpu_num)
-                    fake_B = np.split(fake_B, self.gpu_num)
+                if np.mod(idx+1, self.print_freq) == 0 :
+                    save_images(batch_A_images, [self.batch_size, 1],
+                                './{}/real_A_{:02d}_{:06d}.jpg'.format(self.sample_dir, epoch, idx+1))
+                    # save_images(batch_B_images, [self.batch_size, 1],
+                    #             './{}/real_B_{}_{:02d}_{:06d}.jpg'.format(self.sample_dir, gpu_id, epoch, idx+1))
 
-                    for gpu_id in range(self.gpu_num) :
-                        save_images(batch_A_images[gpu_id], [self.batch_size_per_gpu, 1],
-                                    './{}/real_A_{}_{:02d}_{:04d}.jpg'.format(self.sample_dir, gpu_id, epoch, idx+2))
-                        save_images(batch_B_images[gpu_id], [self.batch_size_per_gpu, 1],
-                                    './{}/real_B_{}_{:02d}_{:04d}.jpg'.format(self.sample_dir, gpu_id, epoch, idx+2))
+                    # save_images(fake_A, [self.batch_size, 1],
+                    #             './{}/fake_A_{}_{:02d}_{:06d}.jpg'.format(self.sample_dir, gpu_id, epoch, idx+1))
+                    save_images(fake_B, [self.batch_size, 1],
+                                './{}/fake_B_{:02d}_{:06d}.jpg'.format(self.sample_dir, epoch, idx+1))
 
-                        save_images(fake_A[gpu_id], [self.batch_size_per_gpu, 1],
-                                    './{}/fake_A_{}_{:02d}_{:04d}.jpg'.format(self.sample_dir, gpu_id, epoch, idx+2))
-                        save_images(fake_B[gpu_id], [self.batch_size_per_gpu, 1],
-                                    './{}/fake_B_{}_{:02d}_{:04d}.jpg'.format(self.sample_dir, gpu_id, epoch, idx+2))
+                if np.mod(idx+1, self.save_freq) == 0 :
+                    self.save(self.checkpoint_dir, counter)
 
-                # After an epoch, start_batch_id is set to zero
-                # non-zero value is only for the first epoch after loading pre-trained model
-                start_batch_id = 0
-
-                # save model
-                self.save(self.checkpoint_dir, counter)
+            # After an epoch, start_batch_id is set to zero
+            # non-zero value is only for the first epoch after loading pre-trained model
+            start_batch_id = 0
 
             # save model for final step
             self.save(self.checkpoint_dir, counter)
 
-
     @property
     def model_dir(self):
-        return "{}_{}_{}".format(
-            self.model_name, self.dataset_name, self.norm)
+        return "{}_{}_{}".format(self.model_name, self.dataset_name, self.gan_type)
 
     def save(self, checkpoint_dir, step):
-        checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir, self.model_name)
+        checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
 
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
@@ -440,7 +436,7 @@ class UNIT(object):
     def load(self, checkpoint_dir):
         import re
         print(" [*] Reading checkpoints...")
-        checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir, self.model_name)
+        checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
 
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and ckpt.model_checkpoint_path:
@@ -458,13 +454,10 @@ class UNIT(object):
         test_A_files = glob('./dataset/{}/*.*'.format(self.dataset_name + '/testA'))
         test_B_files = glob('./dataset/{}/*.*'.format(self.dataset_name + '/testB'))
 
-        """
-        testA, testB = test_data(dataset_name=self.dataset_name, size=self.img_size)
-        test_A_images = testA[:]
-        test_B_images = testB[:]
-        """
         self.saver = tf.train.Saver()
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+        self.result_dir = os.path.join(self.result_dir, self.model_dir)
+        check_folder(self.result_dir)
 
         if could_load :
             print(" [*] Load SUCCESS")
@@ -479,31 +472,32 @@ class UNIT(object):
 
         for sample_file  in test_A_files : # A -> B
             print('Processing A image: ' + sample_file)
-            sample_image = np.asarray(load_test_data(sample_file))
-            image_path = os.path.join(self.result_dir,'{0}'.format(os.path.basename(sample_file)))
+            sample_image = np.asarray(load_test_data(sample_file, size=self.img_size))
+            image_path = os.path.join(self.result_dir, '{0}'.format(os.path.basename(sample_file)))
 
-            fake_img = self.sess.run(self.test_fake_B, feed_dict = {self.test_domain_A : sample_image, self.is_training : False})
-
+            fake_img = self.sess.run(self.test_fake_B, feed_dict={self.test_image: sample_image})
             save_images(fake_img, [1, 1], image_path)
+
             index.write("<td>%s</td>" % os.path.basename(image_path))
             index.write("<td><img src='%s' width='%d' height='%d'></td>" % (sample_file if os.path.isabs(sample_file) else (
-                '..' + os.path.sep + sample_file), self.img_size, self.img_size))
+                    '../..' + os.path.sep + sample_file), self.img_size, self.img_size))
             index.write("<td><img src='%s' width='%d' height='%d'></td>" % (image_path if os.path.isabs(image_path) else (
-                '..' + os.path.sep + image_path), self.img_size, self.img_size))
+                    '../..' + os.path.sep + image_path), self.img_size, self.img_size))
             index.write("</tr>")
 
         for sample_file  in test_B_files : # B -> A
             print('Processing B image: ' + sample_file)
-            sample_image = np.asarray(load_test_data(sample_file))
-            image_path = os.path.join(self.result_dir,'{0}'.format(os.path.basename(sample_file)))
+            sample_image = np.asarray(load_test_data(sample_file, size=self.img_size))
+            image_path = os.path.join(self.result_dir, '{0}'.format(os.path.basename(sample_file)))
 
-            fake_img = self.sess.run(self.test_fake_A, feed_dict = {self.test_domain_B : sample_image, self.is_training : False})
-
+            fake_img = self.sess.run(self.test_fake_A, feed_dict={self.test_image: sample_image})
             save_images(fake_img, [1, 1], image_path)
+
             index.write("<td>%s</td>" % os.path.basename(image_path))
             index.write("<td><img src='%s' width='%d' height='%d'></td>" % (sample_file if os.path.isabs(sample_file) else (
-                '..' + os.path.sep + sample_file), self.img_size, self.img_size))
+                    '../..' + os.path.sep + sample_file), self.img_size, self.img_size))
             index.write("<td><img src='%s' width='%d' height='%d'></td>" % (image_path if os.path.isabs(image_path) else (
-                '..' + os.path.sep + image_path), self.img_size, self.img_size))
+                    '../..' + os.path.sep + image_path), self.img_size, self.img_size))
             index.write("</tr>")
+
         index.close()

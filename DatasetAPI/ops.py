@@ -1,139 +1,143 @@
 import tensorflow as tf
 import tensorflow.contrib as tf_contrib
-from tensorflow.contrib.layers import variance_scaling_initializer as he_init
 
-def conv(x, channels, kernel=3, stride=2, pad=0, normal_weight_init=False, activation_fn='leaky', scope='conv_0') :
-    with tf.variable_scope(scope) :
-        x = tf.pad(x, [[0,0], [pad, pad], [pad, pad], [0,0]])
+weight_init = tf.random_normal_initializer(mean=0.0, stddev=0.02)
+weight_regularizer = tf_contrib.layers.l2_regularizer(scale=0.0001)
 
-        if normal_weight_init :
-            x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=tf.truncated_normal_initializer(stddev=0.02),
-                                 strides=stride, kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+##################################################################################
+# Layer
+##################################################################################
 
-        else :
-            if activation_fn == 'relu' :
-                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=he_init(), strides=stride,
-                                     kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
-            else :
-                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, strides=stride,
-                                     kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
-
-
-        x = activation(x, activation_fn)
-
-        return x
-
-def deconv(x, channels, kernel=3, stride=2, normal_weight_init=False, activation_fn='leaky', scope='deconv_0') :
+def conv(x, channels, kernel=4, stride=2, pad=0, pad_type='zero', use_bias=True, scope='conv'):
     with tf.variable_scope(scope):
-        if normal_weight_init:
-            x = tf.layers.conv2d_transpose(inputs=x, filters=channels, kernel_size=kernel,
-                                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.02),
-                                 strides=stride, padding='SAME', kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+        if pad_type == 'zero' :
+            x = tf.pad(x, [[0, 0], [pad, pad], [pad, pad], [0, 0]])
+        if pad_type == 'reflect' :
+            x = tf.pad(x, [[0, 0], [pad, pad], [pad, pad], [0, 0]], mode='REFLECT')
 
-        else:
-            if activation_fn == 'relu' :
-                x = tf.layers.conv2d_transpose(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=he_init(), strides=stride, padding='SAME',
-                                               kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
-            else :
-                x = tf.layers.conv2d_transpose(inputs=x, filters=channels, kernel_size=kernel, strides=stride, padding='SAME',
-                                               kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
-
-        x = activation(x, activation_fn)
+        x = tf.layers.conv2d(inputs=x, filters=channels,
+                             kernel_size=kernel, kernel_initializer=weight_init,
+                             kernel_regularizer=weight_regularizer,
+                             strides=stride, use_bias=use_bias)
 
         return x
 
-def resblock(x_init, channels, kernel=3, stride=1, pad=1, dropout_ratio=0.0, normal_weight_init=False, is_training=True, norm_fn='instance', scope='resblock_0') :
-    assert norm_fn in ['instance', 'batch', 'weight', 'spectral', None]
-    with tf.variable_scope(scope) :
-        with tf.variable_scope('res1') :
-            x = tf.pad(x_init, [[0, 0], [pad, pad], [pad, pad], [0, 0]])
+def deconv(x, channels, kernel=3, stride=2, use_bias=True, scope='deconv_0') :
+    with tf.variable_scope(scope):
+        x = tf.layers.conv2d_transpose(inputs=x, filters=channels,
+                                       kernel_size=kernel, kernel_initializer=weight_init,
+                                       kernel_regularizer=weight_regularizer,
+                                       strides=stride, use_bias=use_bias, padding='SAME')
 
-            if normal_weight_init :
-                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel,
-                                     kernel_initializer=tf.truncated_normal_initializer(stddev=0.02),
-                                     strides=stride, kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
-            else :
-                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, kernel_initializer=he_init(),
-                                     strides=stride, kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
+        return x
 
-            if norm_fn == 'instance' :
-                x = instance_norm(x, 'res1_instance')
-            if norm_fn == 'batch' :
-                x = batch_norm(x, is_training, 'res1_batch')
+def linear(x, units, use_bias=True, scope='linear'):
+    with tf.variable_scope(scope):
+        x = flatten(x)
+        x = tf.layers.dense(x, units=units, kernel_initializer=weight_init, kernel_regularizer=weight_regularizer, use_bias=use_bias)
 
-            x = relu(x)
-        with tf.variable_scope('res2') :
-            x = tf.pad(x, [[0, 0], [pad, pad], [pad, pad], [0, 0]])
+        return x
 
-            if normal_weight_init :
-                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel,
-                                     kernel_initializer=tf.truncated_normal_initializer(stddev=0.02),
-                                     strides=stride, kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
-            else :
-                x = tf.layers.conv2d(inputs=x, filters=channels, kernel_size=kernel, strides=stride,
-                                     kernel_regularizer=tf_contrib.layers.l2_regularizer(scale=0.0001))
-
-            if norm_fn == 'instance' :
-                x = instance_norm(x, 'res2_instance')
-            if norm_fn == 'batch' :
-                x = batch_norm(x, is_training, 'res2_batch')
-
-        if dropout_ratio > 0.0 :
-            x = tf.layers.dropout(x, rate=dropout_ratio, training=is_training)
-
-        return x + x_init
-
-def activation(x, activation_fn='leaky') :
-    assert activation_fn in ['relu', 'leaky', 'tanh', 'sigmoid', 'swish', None]
-    if activation_fn == 'leaky':
-        x = lrelu(x)
-
-    if activation_fn == 'relu':
-        x = relu(x)
-
-    if activation_fn == 'sigmoid':
-        x = sigmoid(x)
-
-    if activation_fn == 'tanh' :
-        x = tanh(x)
-
-    if activation_fn == 'swish' :
-        x = swish(x)
-
-    return x
-
-def lrelu(x, alpha=0.01) :
-    # pytorch alpha is 0.01
-    return tf.nn.leaky_relu(x, alpha)
-
-def relu(x) :
-    return tf.nn.relu(x)
-
-def sigmoid(x) :
-    return tf.sigmoid(x)
-
-def tanh(x) :
-    return tf.tanh(x)
-
-def swish(x) :
-    return x * sigmoid(x)
-
-def batch_norm(x, is_training=False, scope='batch_nom') :
-    return tf_contrib.layers.batch_norm(x,
-                                        decay=0.9, epsilon=1e-05,
-                                        center=True, scale=True, updates_collections=None,
-                                        is_training=is_training, scope=scope)
-
-def instance_norm(x, scope='instance') :
-    return tf_contrib.layers.instance_norm(x,
-                                           epsilon=1e-05,
-                                           center=True, scale=True,
-                                           scope=scope)
+def flatten(x) :
+    return tf.layers.flatten(x)
 
 def gaussian_noise_layer(mu):
     sigma = 1.0
     gaussian_random_vector = tf.random_normal(shape=tf.shape(mu), mean=0.0, stddev=1.0, dtype=tf.float32)
     return mu + sigma * gaussian_random_vector
+
+
+##################################################################################
+# Residual-block
+##################################################################################
+
+def resblock(x_init, channels, use_bias=True, scope='resblock'):
+    with tf.variable_scope(scope):
+        with tf.variable_scope('res1'):
+            x = conv(x_init, channels, kernel=3, stride=1, pad=1, pad_type='reflect', use_bias=use_bias)
+            x = instance_norm(x)
+            x = relu(x)
+
+        with tf.variable_scope('res2'):
+            x = conv(x, channels, kernel=3, stride=1, pad=1, pad_type='reflect', use_bias=use_bias)
+            x = instance_norm(x)
+
+        return x + x_init
+
+##################################################################################
+# Activation function
+##################################################################################
+
+def lrelu(x, alpha=0.01):
+    # pytorch alpha is 0.01
+    return tf.nn.leaky_relu(x, alpha)
+
+
+def relu(x):
+    return tf.nn.relu(x)
+
+
+def tanh(x):
+    return tf.tanh(x)
+
+##################################################################################
+# Normalization function
+##################################################################################
+
+def instance_norm(x, scope='instance_norm'):
+    return tf_contrib.layers.instance_norm(x,
+                                           epsilon=1e-05,
+                                           center=True, scale=True,
+                                           scope=scope)
+
+##################################################################################
+# Loss function
+##################################################################################
+
+def discriminator_loss(type, real, fake):
+    n_scale = len(real)
+    loss = []
+
+    real_loss = 0
+    fake_loss = 0
+
+    for i in range(n_scale) :
+        if type == 'lsgan' :
+            real_loss = tf.reduce_mean(tf.squared_difference(real[i], 1.0))
+            fake_loss = tf.reduce_mean(tf.square(fake[i]))
+
+        if type == 'gan' :
+            real_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(real[i]), logits=real[i]))
+            fake_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(fake[i]), logits=fake[i]))
+
+        loss.append(real_loss + fake_loss)
+
+    return sum(loss)
+
+
+def generator_loss(type, fake):
+    n_scale = len(fake)
+    loss = []
+
+    fake_loss = 0
+
+    for i in range(n_scale) :
+        if type == 'lsgan' :
+            fake_loss = tf.reduce_mean(tf.squared_difference(fake[i], 1.0))
+
+        if type == 'gan' :
+            fake_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(fake[i]), logits=fake[i]))
+
+        loss.append(fake_loss)
+
+
+    return sum(loss)
+
+
+def L1_loss(x, y):
+    loss = tf.reduce_mean(tf.abs(x - y))
+
+    return loss
 
 def KL_divergence(mu) :
     # KL_divergence = 0.5 * tf.reduce_sum(tf.square(mu) + tf.square(sigma) - tf.log(1e-8 + tf.square(sigma)) - 1, axis = -1)
@@ -142,47 +146,3 @@ def KL_divergence(mu) :
     loss = tf.reduce_mean(mu_2)
 
     return loss
-
-def L1_loss(x, y) :
-    loss = tf.reduce_mean(tf.abs(x - y))
-    return loss
-
-def discriminator_loss(real, fake, smoothing=False, use_lasgan=False) :
-    if use_lasgan :
-        if smoothing :
-            real_loss = tf.reduce_mean(tf.squared_difference(real, 0.9)) * 0.5
-        else :
-            real_loss = tf.reduce_mean(tf.squared_difference(real, 1.0)) * 0.5
-
-        fake_loss = tf.reduce_mean(tf.square(fake)) * 0.5
-    else :
-        if smoothing :
-            real_labels = tf.fill(tf.shape(real), 0.9)
-        else :
-            real_labels = tf.ones_like(real)
-
-        fake_labels = tf.zeros_like(fake)
-
-        real_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=real_labels, logits=real))
-        fake_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=fake_labels, logits=fake))
-
-    loss = (real_loss + fake_loss)
-
-    return loss
-
-def generator_loss(fake, smoothing=False, use_lsgan=False) :
-    if use_lsgan :
-        if smoothing :
-            loss = tf.reduce_mean(tf.squared_difference(fake, 0.9)) * 0.5
-        else :
-            loss = tf.reduce_mean(tf.squared_difference(fake, 1.0)) * 0.5
-    else :
-        if smoothing :
-            fake_labels = tf.fill(tf.shape(fake), 0.9)
-        else :
-            fake_labels = tf.ones_like(fake)
-
-        loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=fake_labels, logits=fake))
-
-    return loss
-
