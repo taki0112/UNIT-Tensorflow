@@ -32,7 +32,7 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 ```
 * See `main.py` for other arguments
 * If you want to `multi_gpu_version`, then use `main_multi_gpu.py` (batch_size = The batch_size per gpu)
-* If you want to `faster_UNIT`, then use `DatasetAPI`
+* If you want to `faster_UNIT`, then use `DatasetAPI` (code is more simple !)
 
 ## Issue
 ### Too much Slow !!!
