@@ -95,43 +95,35 @@ def instance_norm(x, scope='instance_norm'):
 ##################################################################################
 
 def discriminator_loss(type, real, fake):
-    n_scale = len(real)
-    loss = []
-
     real_loss = 0
     fake_loss = 0
 
-    for i in range(n_scale) :
-        if type == 'lsgan' :
-            real_loss = tf.reduce_mean(tf.squared_difference(real[i], 1.0))
-            fake_loss = tf.reduce_mean(tf.square(fake[i]))
+    if type == 'lsgan' :
+        real_loss = tf.reduce_mean(tf.squared_difference(real, 1.0))
+        fake_loss = tf.reduce_mean(tf.square(fake))
 
-        if type == 'gan' :
-            real_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(real[i]), logits=real[i]))
-            fake_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(fake[i]), logits=fake[i]))
+    if type == 'gan' :
+        real_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(real), logits=real))
+        fake_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(fake), logits=fake))
 
-        loss.append(real_loss + fake_loss)
+    loss = real_loss + fake_loss
 
-    return sum(loss)
+    return loss
 
 
 def generator_loss(type, fake):
-    n_scale = len(fake)
-    loss = []
-
     fake_loss = 0
 
-    for i in range(n_scale) :
-        if type == 'lsgan' :
-            fake_loss = tf.reduce_mean(tf.squared_difference(fake[i], 1.0))
+    if type == 'lsgan' :
+        fake_loss = tf.reduce_mean(tf.squared_difference(fake, 1.0))
 
-        if type == 'gan' :
-            fake_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(fake[i]), logits=fake[i]))
+    if type == 'gan' :
+        fake_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(fake), logits=fake))
 
-        loss.append(fake_loss)
+    loss = fake_loss
 
 
-    return sum(loss)
+    return loss
 
 
 def L1_loss(x, y):
