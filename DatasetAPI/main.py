@@ -13,6 +13,8 @@ def parse_args():
     parser.add_argument('--epoch', type=int, default=5, help='The number of epochs to run')
     parser.add_argument('--iteration', type=int, default=100000, help='The number of training iterations')
     parser.add_argument('--batch_size', type=int, default=1, help='The batch size')
+    parser.add_argument('--print_freq', type=int, default=1000, help='The number of image_print_freq')
+    parser.add_argument('--save_freq', type=int, default=1000, help='The number of ckpt_save_freq')
 
     parser.add_argument('--lr', type=float, default=0.0001, help='The learning rate')
     parser.add_argument('--GAN_weight', type=float, default=10.0, help='Weight about GAN, lambda0')
