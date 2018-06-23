@@ -68,6 +68,7 @@ Simple Tensorflow implementation of ["Unsupervised Image to Image Translation Ne
 * [CycleGAN-Tensorflow](https://github.com/taki0112/CycleGAN-Tensorflow)
 * [DiscoGAN-Tensorflow](https://github.com/taki0112/DiscoGAN-Tensorflow)
 * [MUNIT-Tensorflow](https://github.com/taki0112/MUNIT-Tensorflow)
+* [StarGAN-Tensorflow](https://github.com/taki0112/StarGAN-Tensorflow)
 
 ## Reference
 * [UNIT-Pytorch](https://github.com/mingyuliutw/UNIT)
