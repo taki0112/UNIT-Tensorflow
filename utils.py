@@ -4,6 +4,7 @@ from scipy import misc
 import os, random
 import numpy as np
 from PIL import Image 
+import cv2
 
 
 class ImagePool:
@@ -45,11 +46,11 @@ def prepare_data(dataset_name, size):
             if path.__contains__('trainA') :
                 #hiren fixed this to support the new scipy version
                 # trainA.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
-                trainA.append( numpy.array( Image.fromarray( misc.imread(image, mode='RGB') ).resize( [size, size] ) ) )
+                trainA.append( np.array( Image.fromarray( cv2.imread(image) ).resize( [size, size] ) ) )
             if path.__contains__('trainB') :
                 #hiren fixed this to support the new scipy version
                 # trainB.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
-                trainB.append( numpy.array( Image.fromarray( misc.imread(image, mode='RGB') ).resize( [size, size] ) ) )
+                trainB.append( np.array( Image.fromarray( cv2.imread(image) ).resize( [size, size] ) ) )
 
 
     trainA = preprocessing(np.asarray(trainA))
