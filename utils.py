@@ -3,6 +3,7 @@ from tensorflow.contrib import slim
 from scipy import misc
 import os, random
 import numpy as np
+from PIL import Image 
 
 
 class ImagePool:
@@ -42,9 +43,13 @@ def prepare_data(dataset_name, size):
         for file in files:
             image = os.path.join(path, file)
             if path.__contains__('trainA') :
-                trainA.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
+                #hiren fixed this to support the new scipy version
+                # trainA.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
+                trainA.append( numpy.array( Image.fromarray( misc.imread(image, mode='RGB') ).resize( [size, size] ) ) )
             if path.__contains__('trainB') :
-                trainB.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
+                #hiren fixed this to support the new scipy version
+                # trainB.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
+                trainB.append( numpy.array( Image.fromarray( misc.imread(image, mode='RGB') ).resize( [size, size] ) ) )
 
 
     trainA = preprocessing(np.asarray(trainA))
