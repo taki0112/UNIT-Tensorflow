@@ -3,6 +3,8 @@ from tensorflow.contrib import slim
 from scipy import misc
 import os, random
 import numpy as np
+from PIL import Image 
+import cv2
 
 
 class ImagePool:
@@ -40,11 +42,19 @@ def prepare_data(dataset_name, size):
     trainB = []
     for path, dir, files in os.walk(data_path):
         for file in files:
+            if file == '.DS_Store':
+                continue
+
             image = os.path.join(path, file)
             if path.__contains__('trainA') :
-                trainA.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
+                #hiren fixed this to support the new scipy version
+                # trainA.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
+                print( "image ", image, " ", size )
+                trainA.append( np.array( Image.fromarray( cv2.imread(image) ).resize( [size, size] ) ) )
             if path.__contains__('trainB') :
-                trainB.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
+                #hiren fixed this to support the new scipy version
+                # trainB.append(misc.imresize(misc.imread(image, mode='RGB'), [size, size]))
+                trainB.append( np.array( Image.fromarray( cv2.imread(image) ).resize( [size, size] ) ) )
 
 
     trainA = preprocessing(np.asarray(trainA))
